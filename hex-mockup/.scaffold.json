@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "cliVersion": "0.0.0",
+  "name": "hex-mockup",
+  "type": "monolith",
+  "packageManager": "npm",
+  "i18n": { "defaultLocale": "es", "locales": ["es", "en"] },
+  "patterns": [],
+  "deploy": { "docker": true, "ci": "github-actions", "iac": "none" },
+  "git": {},
+  "apps": [
+    {
+      "name": "api",
+      "kind": "backend",
+      "path": ".",
+      "language": "node",
+      "architecture": "hexagonal",
+      "framework": "express",
+      "orm": "prisma",
+      "database": "postgres",
+      "auth": { "strategy": "jwt", "publicRegistration": true },
+      "testing": { "tdd": true, "levels": ["unit", "integration", "acceptance"], "runner": "vitest" },
+      "modules": ["auth", "users"]
+    }
+  ]
+}
