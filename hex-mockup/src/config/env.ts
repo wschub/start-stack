@@ -21,25 +21,18 @@ function duration(fallback: string, maxSeconds: number) {
   );
 }
 
-const schema = z
-  .object({
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-    DATABASE_URL: postgresUrl,
-    LOG_LEVEL: z
-      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
-      .default("info"),
-    JWT_ACCESS_SECRET: z
-      .string()
-      .min(32, "must be at least 32 characters")
-      .refine((value) => !value.startsWith("change-me"), "must not be the example placeholder"),
-    ACCESS_TOKEN_EXPIRATION_TIME: duration("60m", MAX_ACCESS_TOKEN_SECONDS),
-    REFRESH_TOKEN_EXPIRATION_TIME: duration("7d", MAX_REFRESH_TOKEN_SECONDS),
-  })
-  .refine((env) => env.REFRESH_TOKEN_EXPIRATION_TIME > env.ACCESS_TOKEN_EXPIRATION_TIME, {
-    path: ["REFRESH_TOKEN_EXPIRATION_TIME"],
-    message: "must be longer than ACCESS_TOKEN_EXPIRATION_TIME",
-  });
+const schema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  DATABASE_URL: postgresUrl,
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, "must be at least 32 characters")
+    .refine((value) => !value.startsWith("change-me"), "must not be the example placeholder"),
+  ACCESS_TOKEN_EXPIRATION_TIME: duration("60m", MAX_ACCESS_TOKEN_SECONDS),
+  REFRESH_TOKEN_EXPIRATION_TIME: duration("7d", MAX_REFRESH_TOKEN_SECONDS),
+});
 
 /** Las duraciones de los tokens están expresadas en segundos. */
 export type Env = z.infer<typeof schema>;
@@ -47,8 +40,10 @@ export type Env = z.infer<typeof schema>;
 export class EnvError extends Error {
   readonly variables: readonly string[];
 
-  constructor(variables: readonly string[]) {
-    super(`Invalid or missing environment variables: ${variables.join(", ")}`);
+  constructor(variables: readonly string[], reason?: string) {
+    super(
+      `Invalid or missing environment variables: ${variables.join(", ")}${reason ? ` (${reason})` : ""}`,
+    );
     this.name = "EnvError";
     this.variables = variables;
   }
@@ -56,7 +51,17 @@ export class EnvError extends Error {
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const result = schema.safeParse(source);
-  if (result.success) return result.data;
-  const variables = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
-  throw new EnvError(variables);
+  if (!result.success) {
+    const variables = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
+    throw new EnvError(variables);
+  }
+
+  const env = result.data;
+  if (env.REFRESH_TOKEN_EXPIRATION_TIME <= env.ACCESS_TOKEN_EXPIRATION_TIME) {
+    throw new EnvError(
+      ["REFRESH_TOKEN_EXPIRATION_TIME"],
+      "must be longer than ACCESS_TOKEN_EXPIRATION_TIME",
+    );
+  }
+  return env;
 }
