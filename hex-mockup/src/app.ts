@@ -18,6 +18,7 @@ export function createApp(deps: AppDependencies = {}) {
   app.use(httpLogger(deps.logger ?? pino({ level: "silent" })));
   app.use(helmet());
   app.use(createHealthRouter(deps.readinessProbes ?? []));
+  app.use(express.json({ limit: "16kb" }));
   for (const router of deps.routers ?? []) app.use(router);
   app.use(notFoundHandler);
   app.use(errorHandler);

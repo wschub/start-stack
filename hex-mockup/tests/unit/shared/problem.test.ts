@@ -16,8 +16,8 @@ describe("toProblem", () => {
   });
 
   it("conserva el código propio y usa el mensaje genérico si no hay traducción", () => {
-    const { body } = toProblem(new AppError("conflict", { code: "EMAIL_ALREADY_EXISTS" }), "en");
-    expect(body.code).toBe("EMAIL_ALREADY_EXISTS");
+    const { body } = toProblem(new AppError("conflict", { code: "UNTRANSLATED_CODE" }), "en");
+    expect(body.code).toBe("UNTRANSLATED_CODE");
     expect(body.detail).toBe("The request conflicts with the current state of the resource.");
   });
 

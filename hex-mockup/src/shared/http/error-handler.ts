@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { AppError } from "../errors/app-error.ts";
 import { negotiateLocale } from "../i18n/locale.ts";
+import { normalizeError } from "./normalize-error.ts";
 import { toProblem } from "./problem.ts";
 
 export function notFoundHandler(_req: Request, _res: Response, next: NextFunction): void {
@@ -14,7 +15,7 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   const locale = negotiateLocale(req.get("accept-language"));
-  const { status, body } = toProblem(error, locale);
+  const { status, body } = toProblem(normalizeError(error), locale);
   if (status >= 500) req.log.error({ err: error }, "unhandled error");
   res.status(status).set("Cache-Control", "no-store").type("application/problem+json").json(body);
 }
