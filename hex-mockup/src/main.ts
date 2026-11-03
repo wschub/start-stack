@@ -1,5 +1,7 @@
+import type { Server } from "node:http";
 import { composeApp } from "./composition.ts";
 import { type Env, EnvError, loadEnv } from "./config/env.ts";
+import { startServer } from "./shared/http/start-server.ts";
 
 function readEnv(): Env {
   try {
@@ -16,9 +18,14 @@ function readEnv(): Env {
 const env = readEnv();
 const { app, logger, shutdown } = composeApp(env);
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT }, "API listening");
-});
+let server: Server;
+try {
+  server = await startServer(app, env.PORT);
+} catch (error) {
+  logger.fatal({ err: error }, "could not start the server");
+  process.exit(1);
+}
+logger.info({ port: env.PORT }, "API listening");
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
