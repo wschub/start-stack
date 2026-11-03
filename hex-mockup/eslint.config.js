@@ -7,5 +7,6 @@ export default defineConfig([
   globalIgnores(["dist", "coverage", "src/generated"]),
   js.configs.recommended,
   tseslint.configs.recommended,
+  { rules: { "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }] } },
   prettier,
 ]);
