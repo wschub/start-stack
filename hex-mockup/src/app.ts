@@ -1,11 +1,16 @@
 import express from "express";
 import helmet from "helmet";
-import { healthRouter } from "./modules/health/presentation/routes/health.routes.ts";
+import type { ReadinessProbe } from "./modules/health/application/ports/readiness-probe.ts";
+import { createHealthRouter } from "./modules/health/presentation/routes/health.routes.ts";
 
-export function createApp() {
+export interface AppDependencies {
+  readinessProbes?: readonly ReadinessProbe[];
+}
+
+export function createApp(deps: AppDependencies = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
-  app.use(healthRouter);
+  app.use(createHealthRouter(deps.readinessProbes ?? []));
   return app;
 }
