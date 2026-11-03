@@ -15,6 +15,6 @@ export function errorHandler(
 ): void {
   const locale = negotiateLocale(req.get("accept-language"));
   const { status, body } = toProblem(error, locale);
-  if (status >= 500) console.error(error); // el logger estructurado llega en el siguiente bloque
+  if (status >= 500) req.log.error({ err: error }, "unhandled error");
   res.status(status).set("Cache-Control", "no-store").type("application/problem+json").json(body);
 }
