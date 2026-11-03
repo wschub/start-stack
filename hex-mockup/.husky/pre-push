@@ -1,0 +1,2 @@
+cd hex-mockup
+npm run test:acceptance && npm run test:integration

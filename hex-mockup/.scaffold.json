@@ -19,7 +19,11 @@
       "orm": "prisma",
       "database": "postgres",
       "auth": { "strategy": "jwt", "publicRegistration": true },
-      "testing": { "tdd": true, "levels": ["unit", "integration", "acceptance"], "runner": "vitest" },
+      "testing": {
+        "tdd": true,
+        "levels": ["unit", "integration", "acceptance"],
+        "runner": "vitest"
+      },
       "modules": ["auth", "users"]
     }
   ]
