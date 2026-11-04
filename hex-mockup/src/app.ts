@@ -1,3 +1,4 @@
+import cors from "cors";
 import express, { type Router } from "express";
 import helmet from "helmet";
 import pino, { type Logger } from "pino";
@@ -10,6 +11,8 @@ export interface AppDependencies {
   readinessProbes?: readonly ReadinessProbe[];
   routers?: readonly Router[];
   logger?: Logger;
+  /** Orígenes del front que pueden llamar a la API desde un navegador. Vacío = CORS desactivado. */
+  corsOrigins?: readonly string[];
 }
 
 export function createApp(deps: AppDependencies = {}) {
@@ -17,6 +20,24 @@ export function createApp(deps: AppDependencies = {}) {
   app.disable("x-powered-by");
   app.use(httpLogger(deps.logger ?? pino({ level: "silent" })));
   app.use(helmet());
+  if (deps.corsOrigins && deps.corsOrigins.length > 0) {
+    app.use(
+      cors({
+        origin: [...deps.corsOrigins],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: [
+          "Authorization",
+          "Content-Type",
+          "Accept-Language",
+          "X-CSRF-Protection",
+          "X-Request-Id",
+        ],
+        exposedHeaders: ["X-Request-Id"],
+        maxAge: 600,
+      }),
+    );
+  }
   app.use(createHealthRouter(deps.readinessProbes ?? []));
   app.use(express.json({ limit: "16kb" }));
   for (const router of deps.routers ?? []) app.use(router);
