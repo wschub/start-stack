@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
 
 export interface TestDatabase {
+  url: string;
   prisma: PrismaClient;
   stop(): Promise<void>;
 }
@@ -17,6 +18,7 @@ export async function startTestDatabase(): Promise<TestDatabase> {
   });
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   return {
+    url,
     prisma,
     stop: async () => {
       await prisma.$disconnect();

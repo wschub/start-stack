@@ -21,6 +21,31 @@ function duration(fallback: string, maxSeconds: number) {
   );
 }
 
+/** Un origen es esquema + host (+ puerto), sin barra final ni ruta. */
+function isOrigin(value: string): boolean {
+  if (!URL.canParse(value)) return false;
+  const url = new URL(value);
+  return ["http:", "https:"].includes(url.protocol) && url.origin === value;
+}
+
+function booleanFlag(fallback: "true" | "false") {
+  return z.preprocess(
+    (value) => value ?? fallback,
+    z.enum(["true", "false"]).transform((value) => value === "true"),
+  );
+}
+
+const originList = z.preprocess(
+  (value) =>
+    typeof value === "string"
+      ? value
+          .split(",")
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0)
+      : (value ?? []),
+  z.array(z.string().refine(isOrigin, "must be an origin such as https://app.example.com")),
+);
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -30,8 +55,13 @@ const schema = z.object({
     .string()
     .min(32, "must be at least 32 characters")
     .refine((value) => !value.startsWith("change-me"), "must not be the example placeholder"),
+  JWT_ISSUER: z.string().min(1).default("hex-mockup"),
+  JWT_AUDIENCE: z.string().min(1).default("hex-mockup-api"),
   ACCESS_TOKEN_EXPIRATION_TIME: duration("60m", MAX_ACCESS_TOKEN_SECONDS),
   REFRESH_TOKEN_EXPIRATION_TIME: duration("7d", MAX_REFRESH_TOKEN_SECONDS),
+  PUBLIC_REGISTRATION: booleanFlag("true"),
+  COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("strict"),
+  CORS_ORIGINS: originList,
 });
 
 /** Las duraciones de los tokens están expresadas en segundos. */
@@ -61,6 +91,12 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new EnvError(
       ["REFRESH_TOKEN_EXPIRATION_TIME"],
       "must be longer than ACCESS_TOKEN_EXPIRATION_TIME",
+    );
+  }
+  if (env.COOKIE_SAME_SITE === "none" && env.NODE_ENV !== "production") {
+    throw new EnvError(
+      ["COOKIE_SAME_SITE"],
+      "none requires NODE_ENV=production because the cookie must be Secure",
     );
   }
   return env;

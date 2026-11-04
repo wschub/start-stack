@@ -27,6 +27,11 @@ describe("loadEnv", () => {
       JWT_ACCESS_SECRET: SECRET,
       ACCESS_TOKEN_EXPIRATION_TIME: 3600,
       REFRESH_TOKEN_EXPIRATION_TIME: 604_800,
+      JWT_ISSUER: "hex-mockup",
+      JWT_AUDIENCE: "hex-mockup-api",
+      PUBLIC_REGISTRATION: true,
+      COOKIE_SAME_SITE: "strict",
+      CORS_ORIGINS: [],
     });
   });
 
