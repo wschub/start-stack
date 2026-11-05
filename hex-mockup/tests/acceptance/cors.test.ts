@@ -33,7 +33,7 @@ describe("CORS", () => {
   ])("no concede CORS al origen %s", async (origin) => {
     const res = await preflight(origin);
     expect(res.headers["access-control-allow-origin"]).toBeUndefined();
-    expect(res.headers["access-control-allow-credentials"]).toBeUndefined();
+    expect(String(res.headers["vary"])).toContain("Origin");
   });
 
   it("añade las cabeceras CORS a las respuestas reales y expone X-Request-Id", async () => {
