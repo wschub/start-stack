@@ -23,6 +23,7 @@ const STATUS_BY_KIND: Record<ErrorKind, number> = {
   not_found: 404,
   conflict: 409,
   payload_too_large: 413,
+  too_many_requests: 429,
 };
 
 const TITLES: Record<number, string> = {
@@ -32,6 +33,7 @@ const TITLES: Record<number, string> = {
   404: "Not Found",
   409: "Conflict",
   413: "Payload Too Large",
+  429: "Too Many Requests",
   500: "Internal Server Error",
 };
 

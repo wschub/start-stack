@@ -62,6 +62,7 @@ export function composeApp(env: Env) {
     readinessProbes: [new PrismaReadinessProbe(prisma)],
     routers: [authRouter, sessionRouter],
     corsOrigins: env.CORS_ORIGINS,
+    trustProxy: env.TRUST_PROXY,
     logger,
   });
 

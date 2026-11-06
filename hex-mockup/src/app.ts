@@ -13,11 +13,14 @@ export interface AppDependencies {
   logger?: Logger;
   /** Orígenes del front que pueden llamar a la API desde un navegador. Vacío = CORS desactivado. */
   corsOrigins?: readonly string[];
+  /** Número de proxies de confianza delante de la API (0 = ninguno). Define qué IP ve req.ip. */
+  trustProxy?: number;
 }
 
 export function createApp(deps: AppDependencies = {}) {
   const app = express();
   app.disable("x-powered-by");
+  if (deps.trustProxy) app.set("trust proxy", deps.trustProxy);
   app.use(httpLogger(deps.logger ?? pino({ level: "silent" })));
   app.use(helmet());
   if (deps.corsOrigins && deps.corsOrigins.length > 0) {

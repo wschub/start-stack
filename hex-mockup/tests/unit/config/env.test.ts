@@ -32,6 +32,7 @@ describe("loadEnv", () => {
       PUBLIC_REGISTRATION: true,
       COOKIE_SAME_SITE: "strict",
       CORS_ORIGINS: [],
+      TRUST_PROXY: 0,
     });
   });
 

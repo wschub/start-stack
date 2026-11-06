@@ -1,5 +1,11 @@
 export type ErrorKind =
-  "validation" | "unauthenticated" | "forbidden" | "not_found" | "conflict" | "payload_too_large";
+  | "validation"
+  | "unauthenticated"
+  | "forbidden"
+  | "not_found"
+  | "conflict"
+  | "payload_too_large"
+  | "too_many_requests";
 
 export const DEFAULT_ERROR_CODES: Record<ErrorKind, string> = {
   validation: "VALIDATION_ERROR",
@@ -8,6 +14,7 @@ export const DEFAULT_ERROR_CODES: Record<ErrorKind, string> = {
   not_found: "NOT_FOUND",
   conflict: "CONFLICT",
   payload_too_large: "PAYLOAD_TOO_LARGE",
+  too_many_requests: "TOO_MANY_REQUESTS",
 };
 
 export interface AppErrorOptions {
