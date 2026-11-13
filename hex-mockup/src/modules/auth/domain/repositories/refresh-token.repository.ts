@@ -9,4 +9,6 @@ export interface RefreshTokenRepository {
    */
   markUsed(tokenHash: string, at: Date): Promise<boolean>;
   revokeFamily(familyId: string, at: Date): Promise<void>;
+  /** Borra los tokens que expiraron estrictamente antes de la fecha dada y devuelve cuántos. */
+  deleteExpired(before: Date): Promise<number>;
 }

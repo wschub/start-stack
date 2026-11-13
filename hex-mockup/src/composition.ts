@@ -5,6 +5,7 @@ import type { Env } from "./config/env.ts";
 import { PrismaClient } from "./generated/prisma/client.ts";
 import { AuthenticateUser } from "./modules/auth/application/use-cases/authenticate-user.use-case.ts";
 import { IssueSession } from "./modules/auth/application/use-cases/issue-session.use-case.ts";
+import { PurgeExpiredRefreshTokens } from "./modules/auth/application/use-cases/purge-expired-refresh-tokens.use-case.ts";
 import { RefreshSession } from "./modules/auth/application/use-cases/refresh-session.use-case.ts";
 import { RegisterUser } from "./modules/auth/application/use-cases/register-user.use-case.ts";
 import { RevokeSession } from "./modules/auth/application/use-cases/revoke-session.use-case.ts";
@@ -66,5 +67,10 @@ export function composeApp(env: Env) {
     logger,
   });
 
-  return { app, logger, shutdown: () => prisma.$disconnect() };
+  return {
+    app,
+    logger,
+    shutdown: () => prisma.$disconnect(),
+    purgeExpiredTokens: new PurgeExpiredRefreshTokens({ tokens: refreshTokens }),
+  };
 }

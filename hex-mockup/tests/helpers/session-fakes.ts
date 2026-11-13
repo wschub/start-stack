@@ -34,6 +34,17 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
       }
     }
   }
+
+  async deleteExpired(before: Date): Promise<number> {
+    let count = 0;
+    for (const [hash, token] of this.items) {
+      if (token.expiresAt.getTime() < before.getTime()) {
+        this.items.delete(hash);
+        count += 1;
+      }
+    }
+    return count;
+  }
 }
 
 export class FakeAccessTokenService implements AccessTokenService {
