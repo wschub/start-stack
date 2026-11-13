@@ -20,9 +20,24 @@ export interface AppDependencies {
 export function createApp(deps: AppDependencies = {}) {
   const app = express();
   app.disable("x-powered-by");
+  app.disable("etag");
   if (deps.trustProxy) app.set("trust proxy", deps.trustProxy);
   app.use(httpLogger(deps.logger ?? pino({ level: "silent" })));
-  app.use(helmet());
+  app.use(
+    helmet({
+      // Es una API JSON: no sirve páginas, así que se prohíbe cargar o incrustar cualquier cosa.
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      },
+      frameguard: { action: "deny" },
+    }),
+  );
+  // Por defecto nada se cachea; una ruta que lo necesite puede cambiar la cabecera.
+  app.use((_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  });
   if (deps.corsOrigins && deps.corsOrigins.length > 0) {
     app.use(
       cors({

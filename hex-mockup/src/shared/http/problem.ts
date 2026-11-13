@@ -24,6 +24,7 @@ const STATUS_BY_KIND: Record<ErrorKind, number> = {
   conflict: 409,
   payload_too_large: 413,
   too_many_requests: 429,
+  service_unavailable: 503,
 };
 
 const TITLES: Record<number, string> = {
@@ -35,6 +36,7 @@ const TITLES: Record<number, string> = {
   413: "Payload Too Large",
   429: "Too Many Requests",
   500: "Internal Server Error",
+  503: "Service Unavailable",
 };
 
 function fieldErrors(error: AppError): FieldError[] | undefined {

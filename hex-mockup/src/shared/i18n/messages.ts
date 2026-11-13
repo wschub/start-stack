@@ -6,6 +6,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     INVALID_JSON: "The request body is not valid JSON.",
     PAYLOAD_TOO_LARGE: "The request body is too large.",
     TOO_MANY_REQUESTS: "Too many attempts. Please try again later.",
+    SERVICE_UNAVAILABLE:
+      "The service is temporarily unavailable. Please try again in a few seconds.",
     INVALID_EMAIL: "The email address is not valid.",
     INVALID_NAME: "The first name or last name is not valid.",
     INVALID_COUNTRY: "The country code is not valid.",
@@ -32,6 +34,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     INVALID_JSON: "El cuerpo de la solicitud no es un JSON válido.",
     PAYLOAD_TOO_LARGE: "El cuerpo de la solicitud es demasiado grande.",
     TOO_MANY_REQUESTS: "Demasiados intentos. Inténtalo de nuevo más tarde.",
+    SERVICE_UNAVAILABLE:
+      "El servicio no está disponible temporalmente. Inténtalo de nuevo en unos segundos.",
     INVALID_EMAIL: "El correo electrónico no es válido.",
     INVALID_NAME: "El nombre o el apellido no es válido.",
     INVALID_COUNTRY: "El código de país no es válido.",

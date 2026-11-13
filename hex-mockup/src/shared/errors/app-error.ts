@@ -5,7 +5,8 @@ export type ErrorKind =
   | "not_found"
   | "conflict"
   | "payload_too_large"
-  | "too_many_requests";
+  | "too_many_requests"
+  | "service_unavailable";
 
 export const DEFAULT_ERROR_CODES: Record<ErrorKind, string> = {
   validation: "VALIDATION_ERROR",
@@ -15,6 +16,7 @@ export const DEFAULT_ERROR_CODES: Record<ErrorKind, string> = {
   conflict: "CONFLICT",
   payload_too_large: "PAYLOAD_TOO_LARGE",
   too_many_requests: "TOO_MANY_REQUESTS",
+  service_unavailable: "SERVICE_UNAVAILABLE",
 };
 
 export interface AppErrorOptions {
