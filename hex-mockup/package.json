@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run lint && npm run format:check && npm run typecheck && npm test",
-    "prepare": "cd .. && husky hex-mockup/.husky"
+    "prepare": "cd .. && husky hex-mockup/.husky || true",
+    "db:migrate": "prisma migrate deploy"
   },
   "type": "module",
   "devDependencies": {
