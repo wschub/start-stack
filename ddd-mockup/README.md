@@ -2,12 +2,25 @@
 
 > 🇬🇧 [English version](README.en.md)
 
-API backend en Node.js + TypeScript con **arquitectura hexagonal**, organizada por módulos y construida con
-TDD. Trae resuelto lo que casi todo proyecto necesita antes de escribir su primera funcionalidad: salud del
+API backend en Node.js + TypeScript con **Domain-Driven Design** (DDD): contextos delimitados, agregados,
+objetos de valor, eventos de dominio y comandos separados de consultas, construida con TDD. Trae resuelto lo que casi todo proyecto necesita antes de escribir su primera funcionalidad: salud del
 servicio, registro e inicio de sesión, sesiones con refresh rotativo, recuperación de contraseña, roles y
 permisos dinámicos, errores traducidos, límites de intentos, Docker y CI.
 
-Las capas, sus reglas y cómo añadir un módulo están en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Los bloques de DDD, las reglas que un test hace cumplir y cómo añadir un contexto están en
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```text
+src/
+  contexts/identity/   el negocio: cuentas, sesiones, recuperación de contraseña, roles y permisos
+    domain/            agregados, objetos de valor, eventos, repositorios (interfaces) y servicios
+    application/       comandos, consultas, manejadores de eventos, puertos y DTO
+    infrastructure/    adaptadores: Prisma, Argon2, JWT, notificaciones
+    presentation/      HTTP: rutas, controladores y esquemas de entrada
+  platform/health/     capacidades técnicas sin modelo de negocio
+  shared/              núcleo compartido: AggregateRoot, EventBus, errores, HTTP, i18n, permisos
+  composition.ts       único lugar donde se conecta todo
+```
 
 ## Stack
 
@@ -147,6 +160,11 @@ En los dos casos la respuesta de `forgot` es la misma exista o no la cuenta, sol
 secreto, una solicitud nueva invalida la anterior y, al cambiar la contraseña, se cierran todas las
 sesiones del usuario.
 
+Las dos reacciones son **manejadores de eventos de dominio**: guardar la solicitud publica
+`password_reset.requested` (y un manejador envía el enlace o el código), y cambiar la contraseña publica
+`user.password_changed` (y otro cierra las sesiones). Hoy se ejecutan en el mismo proceso; para enviarlos
+por una cola basta con otra implementación de `EventBus`.
+
 > **El envío de correo no está incluido.** El adaptador por defecto
 > (`LogPasswordResetNotifier`) escribe el enlace o el código en el log; en producción solo avisa de que falta un proveedor, sin
 > revelar el secreto.
@@ -155,12 +173,12 @@ sesiones del usuario.
 
 ## Roles y permisos
 
-- Cada módulo declara sus **permisos** en el código (`application/permissions.ts`), con la forma
+- Cada contexto declara sus **permisos** en el código (en su capa `application`), con la forma
   `recurso:acción`. `GET /permissions` los devuelve agrupados por módulo y con nombre en es/en.
 - Los **roles** se crean por la API y se guardan en la base de datos. Un usuario puede tener varios y sus
   permisos son la unión de todos.
 - **`SUPER_ADMIN`** es el único rol fijo: lo crea la migración, tiene todos los permisos (también los de
-  módulos futuros) y no se puede editar ni borrar.
+  contextos futuros) y no se puede editar ni borrar.
 - Los permisos se comprueban en cada petición: un cambio de rol se aplica al instante, sin esperar a que
   caduque el token. Un usuario recién registrado no tiene ningún rol.
 - Salvaguardas: solo un superadministrador concede o retira `SUPER_ADMIN` o cambia el estado de otro
@@ -213,12 +231,12 @@ Todos los errores son `application/problem+json`:
 
 | Nivel       | Comando                    | Qué cubre                                                              |
 | ----------- | -------------------------- | ---------------------------------------------------------------------- |
-| Unitarias   | `npm run test:unit`        | Dominio, casos de uso, configuración y las reglas de arquitectura      |
+| Unitarias   | `npm run test:unit`        | Dominio, comandos, consultas, eventos y las reglas de arquitectura     |
 | Aceptación  | `npm run test:acceptance`  | El contrato HTTP completo con dobles en memoria                        |
 | Integración | `npm run test:integration` | Adaptadores reales contra Postgres (Testcontainers) y flujos completos |
 
 Dos pruebas vigilan cosas que suelen romperse en silencio: `tests/unit/architecture/layers.test.ts` falla
-si un import incumple las reglas de capas, y `tests/unit/config/env-example.test.ts` falla si
+si un import incumple las reglas de capas o un contexto usa el dominio de otro, y `tests/unit/config/env-example.test.ts` falla si
 `.env.example` deja de coincidir con las variables que valida el código.
 
 ## Docker

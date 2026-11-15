@@ -1,10 +1,30 @@
-# Dependabot de la maqueta hexagonal. GitHub solo lo lee desde la raíz del repositorio; la versión
-# de plantilla (rutas relativas a la raíz de un proyecto) es hex-mockup/.github/dependabot.yml.
+# Dependabot de las maquetas. GitHub solo lo lee desde la raíz del repositorio; la versión de
+# plantilla (rutas relativas a la raíz de un proyecto) es <maqueta>/.github/dependabot.yml.
 version: 2
 
 updates:
   - package-ecosystem: npm
     directory: /hex-mockup
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # Todas las dependencias de desarrollo llegan en una sola PR.
+      dev-dependencies:
+        dependency-type: development
+    ignore:
+      # El proyecto está fijado en Prisma 7: la versión 8 es otro modelo de trabajo.
+      - dependency-name: prisma
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/*"
+        update-types: ["version-update:semver-major"]
+      # Debe coincidir con la versión mayor de Node (.nvmrc).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /ddd-mockup
     schedule:
       interval: weekly
     commit-message:
@@ -32,6 +52,17 @@ updates:
 
   - package-ecosystem: docker
     directory: /hex-mockup
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore(docker)
+    ignore:
+      # La imagen se queda en la LTS de Node que indica .nvmrc.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: docker
+    directory: /ddd-mockup
     schedule:
       interval: weekly
     commit-message:

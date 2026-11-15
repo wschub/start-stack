@@ -2,13 +2,25 @@
 
 > 🇪🇸 [Versión en español](README.md)
 
-Backend API in Node.js + TypeScript with a **hexagonal architecture**, organised by modules and built with
-TDD. It ships what almost every project needs before its first feature: service health, sign-up and
+Backend API in Node.js + TypeScript with **Domain-Driven Design** (DDD): bounded contexts, aggregates,
+value objects, domain events and commands kept apart from queries, built with TDD. It ships what almost every project needs before its first feature: service health, sign-up and
 sign-in, sessions with rotating refresh tokens, password recovery, dynamic roles and permissions,
 translated errors, rate limits, Docker and CI.
 
-Layers, their rules and how to add a module are described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-(in Spanish).
+The DDD building blocks, the rules enforced by a test and how to add a context are described in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish).
+
+```text
+src/
+  contexts/identity/   the business: accounts, sessions, password recovery, roles and permissions
+    domain/            aggregates, value objects, events, repository interfaces and services
+    application/       commands, queries, event handlers, ports and DTOs
+    infrastructure/    adapters: Prisma, Argon2, JWT, notifications
+    presentation/      HTTP: routes, controllers and input schemas
+  platform/health/     technical capabilities with no business model
+  shared/              shared kernel: AggregateRoot, EventBus, errors, HTTP, i18n, permissions
+  composition.ts       the only place where everything is wired together
+```
 
 ## Stack
 
@@ -148,6 +160,11 @@ In both cases the `forgot` response is the same whether or not the account exist
 secret is stored, a new request invalidates the previous one and, once the password changes, all of the
 user's sessions are closed.
 
+Both reactions are **domain event handlers**: saving the request publishes `password_reset.requested`
+(and a handler sends the link or the code), and changing the password publishes `user.password_changed`
+(and another one closes the sessions). Today they run in the same process; sending them through a queue
+only takes another `EventBus` implementation.
+
 > **Email delivery is not included.** The default adapter (`LogPasswordResetNotifier`) writes the link or
 > the code to the log; in production it only warns that a provider is missing, without revealing the
 > secret. Before going live, implement the `PasswordResetNotifier` port with your provider (SMTP, Resend,
@@ -155,12 +172,12 @@ user's sessions are closed.
 
 ## Roles and permissions
 
-- Each module declares its **permissions** in code (`application/permissions.ts`), shaped as
+- Each context declares its **permissions** in code (in its `application` layer), shaped as
   `resource:action`. `GET /permissions` returns them grouped by module, with a label in es/en.
 - **Roles** are created through the API and stored in the database. A user can have several, and their
   permissions are the union of all of them.
 - **`SUPER_ADMIN`** is the only fixed role: the migration creates it, it has every permission (including
-  those of future modules) and it cannot be edited or deleted.
+  those of future contexts) and it cannot be edited or deleted.
 - Permissions are checked on every request: a role change applies immediately, without waiting for the
   token to expire. A newly registered user has no roles.
 - Safeguards: only a super administrator grants or removes `SUPER_ADMIN` or changes the status of another
@@ -212,12 +229,12 @@ Every error is `application/problem+json`:
 
 | Level       | Command                    | What it covers                                                       |
 | ----------- | -------------------------- | -------------------------------------------------------------------- |
-| Unit        | `npm run test:unit`        | Domain, use cases, configuration and the architecture rules          |
+| Unit        | `npm run test:unit`        | Domain, commands, queries, events and the architecture rules         |
 | Acceptance  | `npm run test:acceptance`  | The whole HTTP contract with in-memory doubles                       |
 | Integration | `npm run test:integration` | Real adapters against Postgres (Testcontainers) and end-to-end flows |
 
 Two tests watch things that tend to break silently: `tests/unit/architecture/layers.test.ts` fails when an
-import breaks the layer rules, and `tests/unit/config/env-example.test.ts` fails when `.env.example` stops
+import breaks the layer rules or a context uses another context's domain, and `tests/unit/config/env-example.test.ts` fails when `.env.example` stops
 matching the variables the code validates.
 
 ## Docker
