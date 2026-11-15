@@ -1,0 +1,2 @@
+cd ddd-mockup
+npm run test:acceptance && npm run test:integration

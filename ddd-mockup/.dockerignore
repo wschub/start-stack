@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.git
+.github
+.husky
+.env
+.env.*
+!.env.example
+tests
+*.md
+.DS_Store
+.qodo
+src/generated
+Dockerfile
+.dockerignore
+docker-compose.yml

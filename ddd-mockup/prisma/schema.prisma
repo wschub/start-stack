@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id             Int        @id @default(autoincrement())
+  publicId       String     @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String     @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  countryDefault String?    @db.Char(2)
+  mobilePhone    String?
+  locale         String     @default("es")
+  status         UserStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  refreshTokens  RefreshToken[]
+  passwordResets PasswordReset[]
+  roles          UserRole[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  tokenHash String    @unique
+  familyId  String    @db.Uuid
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([familyId])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+enum PasswordResetMethod {
+  LINK
+  CODE
+}
+
+model PasswordReset {
+  id         Int                 @id @default(autoincrement())
+  publicId   String              @unique @db.Uuid
+  method     PasswordResetMethod
+  secretHash String
+  userId     Int
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts   Int                 @default(0)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([secretHash])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  publicId    String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  /// Nombre normalizado (minúsculas, sin espacios ni guiones) para garantizar que es único.
+  nameKey     String   @unique
+  description String?
+  /// Los roles de sistema (SUPER_ADMIN) nacen en una migración y no se editan ni se borran.
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+/// La clave del permiso ("users:read") viene del catálogo que declara cada módulo en el código.
+model RolePermission {
+  roleId     Int
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission String
+
+  @@id([roleId, permission])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId    Int
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}

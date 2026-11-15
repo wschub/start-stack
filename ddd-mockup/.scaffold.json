@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "cliVersion": "0.0.0",
+  "name": "ddd-mockup",
+  "type": "monolith",
+  "packageManager": "npm",
+  "i18n": { "defaultLocale": "es", "locales": ["es", "en"] },
+  "patterns": [],
+  "deploy": { "docker": true, "ci": "github-actions", "iac": "none" },
+  "git": {},
+  "apps": [
+    {
+      "name": "api",
+      "kind": "backend",
+      "path": ".",
+      "language": "node",
+      "architecture": "ddd",
+      "framework": "express",
+      "orm": "prisma",
+      "database": "postgres",
+      "auth": {
+        "strategy": "jwt",
+        "credentials": "password",
+        "publicRegistration": true,
+        "passwordRecovery": ["link", "code"],
+        "rbac": true
+      },
+      "notifications": { "provider": "log" },
+      "testing": {
+        "tdd": true,
+        "levels": ["unit", "integration", "acceptance"],
+        "runner": "vitest"
+      },
+      "modules": ["auth", "users"]
+    }
+  ]
+}
