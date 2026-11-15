@@ -16,6 +16,7 @@ src/
     errors/          AppError (tipo + código estable)
     http/            Problem Details, validación de entrada, límite de intentos, CSRF, logger, servidor
     i18n/            idiomas y catálogo de mensajes (es/en)
+    permissions/     definición de permisos y su catálogo (PermissionRegistry)
   modules/
     <módulo>/
       domain/          entidades, servicios de dominio e interfaces de repositorio
@@ -25,8 +26,14 @@ src/
   generated/prisma/  cliente de Prisma (no se versiona; se crea con `npm run db:generate`)
 ```
 
-Módulos actuales: `health` (liveness y readiness), `auth` (registro, login, sesión con refresh rotativo) y
-`users` (entidad `User`, su repositorio y el DTO público).
+Módulos actuales:
+
+- `health`: liveness y readiness.
+- `auth`: registro, login, sesión con refresh rotativo, recuperación de contraseña, roles y permisos.
+- `users`: entidad `User`, su repositorio, el DTO público y la administración de usuarios.
+
+Además, `src/cli/create-admin.ts` es un segundo punto de entrada (línea de comandos) que reutiliza
+`composition.ts` para crear el primer superadministrador.
 
 ## Las capas
 
@@ -90,6 +97,33 @@ const authRouter = createAuthRouter({
   necesitan (duraciones, secreto, orígenes permitidos).
 - `app.ts` recibe los routers y las sondas ya construidos; por eso las pruebas de aceptación pueden montar la
   aplicación con dobles en memoria, sin base de datos.
+
+## Permisos y roles
+
+La autorización es **dinámica**: los roles viven en la base de datos y los crea el superadministrador; los
+permisos los declara el código.
+
+- **Permiso:** una clave estable `recurso:acción` (`users:read`). Cada módulo declara los suyos en
+  `application/permissions.ts` con `definePermissions`, con un nombre en cada idioma.
+- **Catálogo:** `composition.ts` reúne las listas de todos los módulos en un `PermissionRegistry`. Falla al
+  arrancar si hay claves repetidas o mal formadas.
+- **Rol:** un nombre y una lista de claves de permiso (`roles`, `role_permissions`). Un usuario puede tener
+  varios roles (`user_roles`); sus permisos son la unión.
+- **`SUPER_ADMIN`:** rol de sistema creado en la migración. Tiene todos los permisos del catálogo, incluidos
+  los de módulos que se añadan después, y no se puede editar ni borrar.
+- **Protección de rutas:** `authorize("users:read")` después de `authenticate`. Los permisos se consultan en
+  cada petición (no viajan en el token), así un cambio de rol se aplica al instante. Pedir un permiso que
+  no está en el catálogo falla al montar las rutas.
+
+```ts
+const read = [deps.authenticate, deps.authorize(USERS_PERMISSION.read)];
+router.get("/users", read, controller.list);
+```
+
+Los middlewares `authenticate` y `authorize` pertenecen a `auth`. Los demás módulos **no los importan** (sería
+usar la `presentation` de otro módulo): los reciben ya construidos desde `composition.ts`, igual que
+cualquier otra dependencia. Del mismo modo, `users` no sabe de roles: expone el puerto `UserStatusGuard` y
+`auth` lo implementa para proteger a los superadministradores.
 
 ## Flujo de una petición: `POST /auth/login`
 
@@ -163,10 +197,13 @@ Ejemplo: un módulo `products`. Trabaja de dentro hacia fuera, escribiendo prime
 4. **Persistencia:** añade el modelo a `prisma/schema.prisma` y ejecuta `npx prisma format`,
    `npx prisma migrate dev --name create_products` y `npm run db:generate`. Implementa
    `infrastructure/database/prisma-product.repository.ts`. Pruebas en `tests/integration/products/`.
-5. **Presentación:** esquemas Zod estrictos en `presentation/schemas/`, el controlador y un
-   `createProductsRouter(deps)` en `presentation/routes/`. Protege las rutas con `requireAuth` si hace falta.
-   Pruebas en `tests/acceptance/`.
-6. **Mensajes:** añade a `shared/i18n/messages.ts` (es y en) los códigos de error nuevos.
-7. **Composición:** en `composition.ts`, crea el repositorio y los casos de uso y añade el router a
-   `routers`. Es el único archivo fuera del módulo que hay que tocar, además del esquema de Prisma y los mensajes.
-8. **Verifica:** `npm run verify`. El test de arquitectura confirmará que el módulo nuevo respeta las capas.
+5. **Permisos:** declara los del módulo en `application/permissions.ts`
+   (`definePermissions("products", { "products:read": { es: "Ver productos", en: "View products" } })`).
+6. **Presentación:** esquemas Zod estrictos en `presentation/schemas/`, el controlador y un
+   `createProductsRouter(deps)` en `presentation/routes/`, que recibe `authenticate` y `authorize` y protege
+   cada ruta con su permiso. Pruebas en `tests/acceptance/`.
+7. **Mensajes:** añade a `shared/i18n/messages.ts` (es y en) los códigos de error nuevos.
+8. **Composición:** en `composition.ts`, crea el repositorio y los casos de uso, añade el router a
+   `routers` y suma `PRODUCTS_PERMISSIONS` al `PermissionRegistry`: con eso los permisos nuevos aparecen en
+   `GET /permissions` y se pueden asignar a cualquier rol. Es el único archivo fuera del módulo que hay que tocar, además del esquema de Prisma y los mensajes.
+9. **Verifica:** `npm run verify`. El test de arquitectura confirmará que el módulo nuevo respeta las capas.
