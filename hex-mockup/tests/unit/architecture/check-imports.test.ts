@@ -176,6 +176,69 @@ describe("checkImports", () => {
     });
   });
 
+  describe("R8: dominio y aplicación no importan shared/http", () => {
+    const specifier = "../../../../shared/http/rate-limit.ts";
+
+    it.each([
+      ["el dominio", `${AUTH}/domain/services/password-policy.ts`],
+      ["la aplicación", `${AUTH}/application/use-cases/login.use-case.ts`],
+    ])("rechaza que lo importe %s", (_name, file) => {
+      expect(rulesOf(file, `import { createRateLimiter } from "${specifier}";`)).toEqual(["R8"]);
+    });
+
+    it("acepta el resto de shared en dominio y aplicación", () => {
+      const file = `${AUTH}/application/use-cases/login.use-case.ts`;
+      const source = `
+        import { AppError } from "../../../../shared/errors/app-error.ts";
+        import type { Locale } from "../../../../shared/i18n/locale.ts";
+        import { definePermissions } from "../../../../shared/permissions/permission.ts";`;
+
+      expect(rulesOf(file, source)).toEqual([]);
+    });
+
+    it("acepta shared/http en presentación e infraestructura", () => {
+      const source = `import { createRateLimiter } from "${specifier}";`;
+
+      expect(rulesOf(`${AUTH}/presentation/routes/auth.routes.ts`, source)).toEqual([]);
+      expect(rulesOf(`${AUTH}/infrastructure/security/limiter.ts`, source)).toEqual([]);
+    });
+  });
+
+  describe("R9: src/config solo lo importan main.ts, composition.ts y src/cli", () => {
+    it.each([
+      [
+        "la presentación",
+        `${AUTH}/presentation/routes/auth.routes.ts`,
+        "../../../../config/env.ts",
+      ],
+      [
+        "la infraestructura",
+        `${AUTH}/infrastructure/security/jose.ts`,
+        "../../../../config/env.ts",
+      ],
+      ["shared", "src/shared/http/http-logger.ts", "../../config/env.ts"],
+      ["app.ts", "src/app.ts", "./config/env.ts"],
+    ])("rechaza que lo importe %s", (_name, file, specifier) => {
+      expect(rulesOf(file, `import { loadEnv } from "${specifier}";`)).toEqual(["R9"]);
+    });
+
+    it.each([
+      ["main.ts", "src/main.ts", "./config/env.ts"],
+      ["composition.ts", "src/composition.ts", "./config/env.ts"],
+      ["un comando de src/cli", "src/cli/create-admin.ts", "../config/env.ts"],
+      ["otro archivo de config", "src/config/logger.ts", "./env.ts"],
+    ])("acepta que lo importe %s", (_name, file, specifier) => {
+      expect(rulesOf(file, `import { loadEnv } from "${specifier}";`)).toEqual([]);
+    });
+
+    it("en dominio y aplicación sigue mandando la regla de su capa", () => {
+      const source = `import { loadEnv } from "../../../../config/env.ts";`;
+
+      expect(rulesOf(`${AUTH}/domain/entities/token.ts`, source)).toEqual(["R1"]);
+      expect(rulesOf(`${AUTH}/application/use-cases/login.use-case.ts`, source)).toEqual(["R2"]);
+    });
+  });
+
   describe("entre módulos solo se consume dominio y aplicación", () => {
     it("rechaza la presentación de otro módulo desde la presentación", () => {
       const file = `${AUTH}/presentation/routes/auth.routes.ts`;

@@ -2,14 +2,14 @@ import { posix } from "node:path";
 
 /**
  * Función de aptitud de la arquitectura hexagonal: revisa los imports de src/ y devuelve los que
- * incumplen las reglas de dependencia entre capas (R1–R7 de docs/ARCHITECTURE.md).
+ * incumplen las reglas de dependencia entre capas (R1–R9 de docs/ARCHITECTURE.md).
  *
  *   presentation ──► application ──► domain ◄── infrastructure
  *
  * Es una función pura: recibe un mapa "ruta → contenido" y no toca el disco.
  */
 
-export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "CROSS_MODULE";
+export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "CROSS_MODULE";
 
 export interface Violation {
   /** Archivo que contiene el import, por ejemplo "src/modules/auth/domain/entities/token.ts". */
@@ -131,6 +131,32 @@ function checkInternal(source: Location, target: Location): Rule | undefined {
   return undefined;
 }
 
+/** R8: el núcleo (dominio y aplicación) no conoce HTTP, aunque viva en shared. */
+function importsHttpFromCore(source: Location, targetPath: string): boolean {
+  if (source.kind !== "layer" || !targetPath.startsWith("src/shared/http/")) return false;
+  return source.layer === "domain" || source.layer === "application";
+}
+
+/** R9: la configuración solo se lee en los puntos de entrada; el resto la recibe por parámetros. */
+function readsConfigOutsideEntryPoints(file: string, targetPath: string): boolean {
+  if (!targetPath.startsWith("src/config/")) return false;
+  const allowed =
+    file === "src/main.ts" ||
+    file === "src/composition.ts" ||
+    file.startsWith("src/cli/") ||
+    file.startsWith("src/config/");
+  return !allowed;
+}
+
+function checkRelative(file: string, source: Location, imported: string): Rule | undefined {
+  const targetPath = posix.join(posix.dirname(file), imported);
+  const layerRule = checkInternal(source, locate(targetPath));
+  if (layerRule) return layerRule;
+  if (importsHttpFromCore(source, targetPath)) return "R8";
+  if (readsConfigOutsideEntryPoints(file, targetPath)) return "R9";
+  return undefined;
+}
+
 export function checkImports(files: Readonly<Record<string, string>>): Violation[] {
   const violations: Violation[] = [];
 
@@ -140,7 +166,7 @@ export function checkImports(files: Readonly<Record<string, string>>): Violation
 
     for (const imported of importsOf(content)) {
       const rule = imported.startsWith(".")
-        ? checkInternal(source, locate(posix.join(posix.dirname(file), imported)))
+        ? checkRelative(file, source, imported)
         : checkExternal(source, imported);
       if (rule) violations.push({ file, imported, rule });
     }

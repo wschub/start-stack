@@ -65,6 +65,8 @@ estas reglas. La lógica está en `tests/helpers/architecture.ts` y tiene sus pr
 | R5    | `shared/**` nunca importa de `modules/**`.                                                                                                                                                                                         |
 | R6    | `src/generated/**` solo lo importan `infrastructure/**` y `composition.ts`.                                                                                                                                                        |
 | R7    | `domain/**` y `application/**` no importan librerías de web, base de datos, log ni criptografía: `express`, `cors`, `helmet`, `cookie-parser`, `express-rate-limit`, `@prisma/*`, `pg`, `pino*`, `jose`, `@node-rs/argon2`, `zod`. |
+| R8    | `domain/**` y `application/**` no importan `shared/http/**`: el núcleo no conoce HTTP, aunque esté en `shared`.                                                                                                                    |
+| R9    | `src/config/**` solo lo importan `main.ts`, `composition.ts` y `src/cli/**`; el resto recibe la configuración por parámetros.                                                                                                      |
 | —     | **Entre módulos** solo se consume el `domain` y la `application` del otro (entidades, repositorios, puertos, DTO públicos); nunca su `infrastructure` ni su `presentation`.                                                        |
 
 Si el test falla, el mensaje indica la regla, el archivo y el import, por ejemplo:
