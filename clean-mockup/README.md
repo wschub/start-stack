@@ -9,7 +9,9 @@ servicio, registro e inicio de sesión, sesiones con refresh rotativo, recuperac
 permisos dinámicos, errores traducidos, límites de intentos, Docker y CI.
 
 Las capas, las reglas que un test hace cumplir y cómo añadir una funcionalidad están en
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Para crear tu primera entidad con su tabla, sigue
+[docs/ADDING-A-FEATURE.md](docs/ADDING-A-FEATURE.md): el recorrido completo con código, de la regla de
+negocio a la ruta HTTP.
 
 ```text
 src/
@@ -17,7 +19,7 @@ src/
   use-cases/           lo que la aplicación hace (auth, users, health) y los puertos que necesita
   interface-adapters/  controladores, presentadores y esquemas; HTTP como datos planos
   frameworks/          detalles: Express, Prisma, Argon2, JWT, notificaciones
-  main/                arranque, configuración y composición
+  main.ts  composition.ts  config/  cli/   "main": arranque, configuración y composición
 ```
 
 `main → frameworks → interface-adapters → use-cases → entities`: los `import` solo van en ese sentido.
@@ -75,7 +77,7 @@ curl http://localhost:3000/health/ready
 
 ## Variables de entorno
 
-Se validan al arrancar (`src/main/config/env.ts`); si falta alguna o no es válida, el servidor no arranca y dice
+Se validan al arrancar (`src/config/env.ts`); si falta alguna o no es válida, el servidor no arranca y dice
 cuál. `.env.example` las documenta todas y una prueba comprueba que no se desincronice.
 
 | Variable                         | Valores                                                      | Por defecto                            |
@@ -164,7 +166,7 @@ sesiones del usuario.
 > (`LogPasswordResetNotifier`) escribe el enlace o el código en el log; en producción solo avisa de que falta un proveedor, sin
 > revelar el secreto.
 > Antes de publicar, implementa el puerto `PasswordResetNotifier` con tu proveedor (SMTP, Resend, SES…) y
-> conéctalo en `src/main/composition.ts`.
+> conéctalo en `src/composition.ts`.
 
 ## Roles y permisos
 
@@ -231,7 +233,7 @@ Todos los errores son `application/problem+json`:
 | Integración | `npm run test:integration` | Adaptadores reales contra Postgres (Testcontainers) y flujos completos |
 
 Dos pruebas vigilan cosas que suelen romperse en silencio: `tests/unit/architecture/layers.test.ts` falla
-si un import incumple la regla de dependencia, y `tests/unit/main/config/env-example.test.ts` falla si
+si un import incumple la regla de dependencia, y `tests/unit/config/env-example.test.ts` falla si
 `.env.example` deja de coincidir con las variables que valida el código.
 
 ## Docker
@@ -249,7 +251,7 @@ docker compose --profile app rm -sf api migrate        # detiene y borra la API 
 
 ```bash
 docker compose --profile app run --rm -e ADMIN_PASSWORD api \
-  node dist/main/cli/create-admin.js --email ana@example.com --first-name Ana --last-name Gómez
+  node dist/cli/create-admin.js --email ana@example.com --first-name Ana --last-name Gómez
 ```
 
 ## Despliegue sin Docker

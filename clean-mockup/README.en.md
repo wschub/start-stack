@@ -8,7 +8,9 @@ sign-in, sessions with rotating refresh tokens, password recovery, dynamic roles
 translated errors, rate limits, Docker and CI.
 
 The layers, the rules enforced by a test and how to add a feature are described in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish). To create your first entity and its table,
+follow [docs/ADDING-A-FEATURE.md](docs/ADDING-A-FEATURE.md) (in Spanish): the whole path with code, from the
+business rule to the HTTP route.
 
 ```text
 src/
@@ -16,7 +18,7 @@ src/
   use-cases/           what the application does (auth, users, health) and the ports it needs
   interface-adapters/  controllers, presenters and schemas; HTTP as plain data
   frameworks/          details: Express, Prisma, Argon2, JWT, notifications
-  main/                start-up, configuration and composition
+  main.ts  composition.ts  config/  cli/   "main": start-up, configuration and composition
 ```
 
 `main → frameworks → interface-adapters → use-cases → entities`: imports only go in that direction.
@@ -74,7 +76,7 @@ curl http://localhost:3000/health/ready
 
 ## Environment variables
 
-They are validated at startup (`src/main/config/env.ts`); if one is missing or invalid, the server refuses to
+They are validated at startup (`src/config/env.ts`); if one is missing or invalid, the server refuses to
 start and names it. `.env.example` documents all of them and a test checks that it never drifts.
 
 | Variable                         | Values                                                          | Default                                |
@@ -162,7 +164,7 @@ user's sessions are closed.
 > **Email delivery is not included.** The default adapter (`LogPasswordResetNotifier`) writes the link or
 > the code to the log; in production it only warns that a provider is missing, without revealing the
 > secret. Before going live, implement the `PasswordResetNotifier` port with your provider (SMTP, Resend,
-> SES…) and wire it in `src/main/composition.ts`.
+> SES…) and wire it in `src/composition.ts`.
 
 ## Roles and permissions
 
@@ -228,7 +230,7 @@ Every error is `application/problem+json`:
 | Integration | `npm run test:integration` | Real adapters against Postgres (Testcontainers) and end-to-end flows |
 
 Two tests watch things that tend to break silently: `tests/unit/architecture/layers.test.ts` fails when an
-import breaks the dependency rule, and `tests/unit/main/config/env-example.test.ts` fails when `.env.example` stops
+import breaks the dependency rule, and `tests/unit/config/env-example.test.ts` fails when `.env.example` stops
 matching the variables the code validates.
 
 ## Docker
@@ -246,7 +248,7 @@ docker compose --profile app rm -sf api migrate            # stops and removes t
 
 ```bash
 docker compose --profile app run --rm -e ADMIN_PASSWORD api \
-  node dist/main/cli/create-admin.js --email ana@example.com --first-name Ana --last-name Gómez
+  node dist/cli/create-admin.js --email ana@example.com --first-name Ana --last-name Gómez
 ```
 
 ## Deploying without Docker
