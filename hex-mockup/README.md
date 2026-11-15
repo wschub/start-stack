@@ -7,7 +7,9 @@ TDD. Trae resuelto lo que casi todo proyecto necesita antes de escribir su prime
 servicio, registro e inicio de sesión, sesiones con refresh rotativo, recuperación de contraseña, roles y
 permisos dinámicos, errores traducidos, límites de intentos, Docker y CI.
 
-Las capas, sus reglas y cómo añadir un módulo están en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Las capas y sus reglas están en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Para crear tu primer módulo
+con su tabla, sigue [docs/ADDING-A-MODULE.md](docs/ADDING-A-MODULE.md): el recorrido completo con código, de
+la regla de negocio a la ruta HTTP.
 
 ## Stack
 

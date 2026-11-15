@@ -188,6 +188,9 @@ push. `npm run verify` lo ejecuta todo junto con lint, formato y tipos.
 
 ## Cómo añadir un módulo a mano
 
+> La guía [ADDING-A-MODULE.md](ADDING-A-MODULE.md) hace este mismo recorrido con el código completo de
+> un ejemplo (productos), sus pruebas y el principio que protege cada paso. Esto es el resumen.
+
 Ejemplo: un módulo `products`. Trabaja de dentro hacia fuera, escribiendo primero la prueba de cada paso.
 
 1. **Carpetas:** `src/modules/products/{domain,application,infrastructure,presentation}`.

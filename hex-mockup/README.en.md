@@ -7,8 +7,9 @@ TDD. It ships what almost every project needs before its first feature: service 
 sign-in, sessions with rotating refresh tokens, password recovery, dynamic roles and permissions,
 translated errors, rate limits, Docker and CI.
 
-Layers, their rules and how to add a module are described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-(in Spanish).
+The layers and their rules are described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish). To
+create your first module and its table, follow [docs/ADDING-A-MODULE.md](docs/ADDING-A-MODULE.md) (in
+Spanish): the whole path with code, from the business rule to the HTTP route.
 
 ## Stack
 
