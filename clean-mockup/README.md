@@ -80,22 +80,22 @@ curl http://localhost:3000/health/ready
 Se validan al arrancar (`src/config/env.ts`); si falta alguna o no es válida, el servidor no arranca y dice
 cuál. `.env.example` las documenta todas y una prueba comprueba que no se desincronice.
 
-| Variable                         | Valores                                                      | Por defecto                            |
-| -------------------------------- | ------------------------------------------------------------ | -------------------------------------- |
-| `NODE_ENV`                       | `development`, `test`, `production`                          | `development`                          |
-| `PORT`                           | 1–65535                                                      | `3000`                                 |
-| `DATABASE_URL`                   | URL de PostgreSQL                                            | **obligatoria**                        |
-| `LOG_LEVEL`                      | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info`                                 |
-| `JWT_ACCESS_SECRET`              | Al menos 32 caracteres; se rechaza el valor de ejemplo       | **obligatoria**                        |
-| `JWT_ISSUER` / `JWT_AUDIENCE`    | Texto                                                        | `clean-mockup` / `clean-mockup-api`    |
-| `ACCESS_TOKEN_EXPIRATION_TIME`   | Duración: `30s`, `50m`, `1h`, `7d` (máximo 24 h)             | `60m`                                  |
-| `REFRESH_TOKEN_EXPIRATION_TIME`  | Duración (máximo 90 d; mayor que la del access token)        | `7d`                                   |
-| `PASSWORD_RESET_EXPIRATION_TIME` | Vigencia del enlace de recuperación (máximo 24 h)            | `30m`                                  |
-| `PASSWORD_RESET_URL`             | Página del front que recibe el token (`?token=…`)            | `http://localhost:5173/reset-password` |
-| `PUBLIC_REGISTRATION`            | `true`, `false`                                              | `true`                                 |
-| `COOKIE_SAME_SITE`               | `strict`, `lax`, `none` (`none` exige `NODE_ENV=production`) | `strict`                               |
-| `CORS_ORIGINS`                   | Orígenes exactos separados por comas, sin `/` final ni `*`   | vacío (CORS desactivado)               |
-| `TRUST_PROXY`                    | 0–10: proxies de confianza delante de la API                 | `0`                                    |
+| Variable                         | Valores                                                      | Por defecto                             |
+| -------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
+| `NODE_ENV`                       | `development`, `test`, `production`                          | `development`                           |
+| `PORT`                           | 1–65535                                                      | `3000`                                  |
+| `DATABASE_URL`                   | URL de PostgreSQL                                            | **obligatoria**                         |
+| `LOG_LEVEL`                      | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent` | `info`                                  |
+| `JWT_ACCESS_SECRET`              | Al menos 32 caracteres; se rechaza el valor de ejemplo       | **obligatoria**                         |
+| `JWT_ISSUER` / `JWT_AUDIENCE`    | Texto                                                        | el nombre del proyecto y `<nombre>-api` |
+| `ACCESS_TOKEN_EXPIRATION_TIME`   | Duración: `30s`, `50m`, `1h`, `7d` (máximo 24 h)             | `60m`                                   |
+| `REFRESH_TOKEN_EXPIRATION_TIME`  | Duración (máximo 90 d; mayor que la del access token)        | `7d`                                    |
+| `PASSWORD_RESET_EXPIRATION_TIME` | Vigencia del enlace de recuperación (máximo 24 h)            | `30m`                                   |
+| `PASSWORD_RESET_URL`             | Página del front que recibe el token (`?token=…`)            | `http://localhost:5173/reset-password`  |
+| `PUBLIC_REGISTRATION`            | `true`, `false`                                              | `true`                                  |
+| `COOKIE_SAME_SITE`               | `strict`, `lax`, `none` (`none` exige `NODE_ENV=production`) | `strict`                                |
+| `CORS_ORIGINS`                   | Orígenes exactos separados por comas, sin `/` final ni `*`   | vacío (CORS desactivado)                |
+| `TRUST_PROXY`                    | 0–10: proxies de confianza delante de la API                 | `0`                                     |
 
 ## Endpoints
 

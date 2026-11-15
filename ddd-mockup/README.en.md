@@ -87,7 +87,7 @@ start and names it. `.env.example` documents all of them and a test checks that 
 | `DATABASE_URL`                   | PostgreSQL URL                                                  | **required**                           |
 | `LOG_LEVEL`                      | `fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`    | `info`                                 |
 | `JWT_ACCESS_SECRET`              | At least 32 characters; the example value is rejected           | **required**                           |
-| `JWT_ISSUER` / `JWT_AUDIENCE`    | Text                                                            | `ddd-mockup` / `ddd-mockup-api`        |
+| `JWT_ISSUER` / `JWT_AUDIENCE`    | Text                                                            | the project name and `<name>-api`      |
 | `ACCESS_TOKEN_EXPIRATION_TIME`   | Duration: `30s`, `50m`, `1h`, `7d` (24 h at most)               | `60m`                                  |
 | `REFRESH_TOKEN_EXPIRATION_TIME`  | Duration (90 d at most; longer than the access token's)         | `7d`                                   |
 | `PASSWORD_RESET_EXPIRATION_TIME` | Lifetime of the recovery link (24 h at most)                    | `30m`                                  |
