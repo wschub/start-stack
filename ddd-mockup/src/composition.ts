@@ -41,7 +41,9 @@ import { ChangeUserStatus } from "./contexts/identity/application/commands/chang
 import { GetUser } from "./contexts/identity/application/queries/get-user.query.ts";
 import { ListUsers } from "./contexts/identity/application/queries/list-users.query.ts";
 import { createUsersRouter } from "./contexts/identity/presentation/routes/users.routes.ts";
+import { InProcessEventBus } from "./shared/events/event-bus.ts";
 import { PermissionRegistry } from "./shared/permissions/permission.ts";
+import { subscribeIdentityEventHandlers } from "./contexts/identity/application/event-handlers/subscribe.ts";
 
 /** El código de 6 dígitos caduca antes que el enlace: es más fácil de adivinar. */
 const MAX_RESET_CODE_SECONDS = 10 * 60;
@@ -58,9 +60,11 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
   });
 
-  const users = new PrismaUserRepository(prisma);
+  // Los repositorios publican en este bus los eventos de los agregados que guardan.
+  const events = new InProcessEventBus();
+  const users = new PrismaUserRepository(prisma, events);
   const refreshTokens = new PrismaRefreshTokenRepository(prisma);
-  const passwordResets = new PrismaPasswordResetRepository(prisma);
+  const passwordResets = new PrismaPasswordResetRepository(prisma, events);
   const hasher = new Argon2PasswordHasher();
   const accessTokens = new JoseAccessTokenService({
     secret: env.JWT_ACCESS_SECRET,
@@ -104,23 +108,27 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     allowedOrigins: env.CORS_ORIGINS,
   });
 
+  subscribeIdentityEventHandlers(events, {
+    // Adaptador de desarrollo: escribe el enlace o el código en el log. Sustitúyelo por uno
+    // que envíe correo antes de salir a producción (allí no revela nada).
+    notifier:
+      overrides.passwordResetNotifier ??
+      new LogPasswordResetNotifier({
+        logger,
+        resetUrl: env.PASSWORD_RESET_URL,
+        revealSecret: env.NODE_ENV !== "production",
+      }),
+    refreshTokens,
+  });
+
   const passwordRouter = createPasswordRouter({
     requestPasswordReset: new RequestPasswordReset({
       users,
       resets: passwordResets,
-      // Adaptador de desarrollo: escribe el enlace o el código en el log. Sustitúyelo por uno
-      // que envíe correo antes de salir a producción (allí no revela nada).
-      notifier:
-        overrides.passwordResetNotifier ??
-        new LogPasswordResetNotifier({
-          logger,
-          resetUrl: env.PASSWORD_RESET_URL,
-          revealSecret: env.NODE_ENV !== "production",
-        }),
       linkTtlSeconds: env.PASSWORD_RESET_EXPIRATION_TIME,
       codeTtlSeconds: Math.min(env.PASSWORD_RESET_EXPIRATION_TIME, MAX_RESET_CODE_SECONDS),
     }),
-    resetPassword: new ResetPassword({ users, resets: passwordResets, refreshTokens, hasher }),
+    resetPassword: new ResetPassword({ users, resets: passwordResets, hasher }),
   });
 
   const rolesRouter = createRolesRouter({

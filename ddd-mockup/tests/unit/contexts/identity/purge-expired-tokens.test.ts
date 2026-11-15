@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PurgeExpiredRefreshTokens } from "../../../../src/contexts/identity/application/commands/purge-expired-refresh-tokens.command.ts";
-import type { RefreshToken } from "../../../../src/contexts/identity/domain/aggregates/refresh-token.ts";
+import type { RefreshToken } from "../../../../src/contexts/identity/domain/entities/refresh-token.ts";
 import { InMemoryRefreshTokenRepository } from "../../../helpers/session-fakes.ts";
 
 const NOW = new Date("2026-03-10T12:00:00Z");

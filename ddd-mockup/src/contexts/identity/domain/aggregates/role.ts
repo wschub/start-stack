@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { AggregateRoot } from "../../../../shared/domain/aggregate-root.ts";
 import { AppError } from "../../../../shared/errors/app-error.ts";
+import { RoleName } from "../value-objects/role-name.ts";
 
 /** Rol de sistema: tiene todos los permisos, presentes y futuros, y no se puede editar ni borrar. */
 export const SUPER_ADMIN_ROLE = "SUPER_ADMIN";
@@ -31,9 +33,6 @@ export interface RoleFactoryOptions {
   now?: () => Date;
 }
 
-const NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u;
-const MIN_NAME = 2;
-const MAX_NAME = 50;
 const MAX_DESCRIPTION = 200;
 
 function invalid(code: string, field: string): AppError {
@@ -41,15 +40,12 @@ function invalid(code: string, field: string): AppError {
 }
 
 function normalizeName(value: string): string {
-  const name = value.trim().replace(/\s+/g, " ");
-  if (name.length < MIN_NAME || name.length > MAX_NAME || !NAME.test(name)) {
-    throw invalid("INVALID_ROLE_NAME", "name");
-  }
+  const name = RoleName.create(value);
   // El nombre del rol de sistema está reservado, se escriba como se escriba.
-  if (roleNameKey(name) === roleNameKey(SUPER_ADMIN_ROLE)) {
+  if (name.equals(RoleName.restore(SUPER_ADMIN_ROLE))) {
     throw new AppError("conflict", { code: "ROLE_NAME_TAKEN" });
   }
-  return name;
+  return name.value;
 }
 
 function normalizeDescription(value: string | null | undefined): string | null {
@@ -65,15 +61,16 @@ function normalizePermissions(values: readonly string[] | undefined): string[] {
   return [...new Set(values ?? [])].sort();
 }
 
-/** Clave con la que se compara la unicidad del nombre: sin distinguir mayúsculas ni espacios/guiones. */
+/** Clave con la que se compara la unicidad del nombre (ver RoleName). */
 export function roleNameKey(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, "_");
+  return RoleName.keyOf(name);
 }
 
-export class Role {
+/**
+ * Agregado Role: un nombre y el conjunto de permisos que concede. Protege dos invariantes: el
+ * nombre es válido y no usurpa el del rol de sistema, y los roles de sistema no se modifican.
+ */
+export class Role extends AggregateRoot {
   readonly publicId: string;
   readonly name: string;
   readonly description: string | null;
@@ -83,6 +80,7 @@ export class Role {
   readonly updatedAt: Date;
 
   private constructor(props: RoleProps) {
+    super();
     this.publicId = props.publicId;
     this.name = props.name;
     this.description = props.description;

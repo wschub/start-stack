@@ -1,5 +1,9 @@
 import type { PrismaClient } from "../../../../generated/prisma/client.ts";
-import type { PasswordReset, PasswordResetMethod } from "../../domain/aggregates/password-reset.ts";
+import {
+  type PasswordResetMethod,
+  PasswordResetRequest,
+} from "../../domain/aggregates/password-reset-request.ts";
+import { type EventBus, NULL_EVENT_BUS } from "../../../../shared/events/event-bus.ts";
 import type { PasswordResetRepository } from "../../domain/repositories/password-reset.repository.ts";
 
 interface PasswordResetRow {
@@ -19,8 +23,8 @@ function toMethod(value: "LINK" | "CODE"): PasswordResetMethod {
   return value === "LINK" ? "link" : "code";
 }
 
-function toDomain(row: PasswordResetRow): PasswordReset {
-  return {
+function toDomain(row: PasswordResetRow): PasswordResetRequest {
+  return PasswordResetRequest.restore({
     id: row.publicId,
     userPublicId: row.user.publicId,
     method: toMethod(row.method),
@@ -29,18 +33,20 @@ function toDomain(row: PasswordResetRow): PasswordReset {
     usedAt: row.usedAt,
     attempts: row.attempts,
     createdAt: row.createdAt,
-  };
+  });
 }
 
 export class PrismaPasswordResetRepository implements PasswordResetRepository {
   private readonly prisma: PrismaClient;
+  private readonly events: EventBus;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, events: EventBus = NULL_EVENT_BUS) {
     this.prisma = prisma;
+    this.events = events;
   }
 
   /** Borrado e inserción en una sola transacción: nunca quedan dos solicitudes vigentes. */
-  async replaceForUser(reset: PasswordReset): Promise<void> {
+  async replaceForUser(reset: PasswordResetRequest): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.passwordReset.deleteMany({ where: { user: { publicId: reset.userPublicId } } }),
       this.prisma.passwordReset.create({
@@ -56,9 +62,10 @@ export class PrismaPasswordResetRepository implements PasswordResetRepository {
         },
       }),
     ]);
+    await this.events.publish(reset.pullEvents());
   }
 
-  async findBySecretHash(secretHash: string): Promise<PasswordReset | null> {
+  async findBySecretHash(secretHash: string): Promise<PasswordResetRequest | null> {
     const row = await this.prisma.passwordReset.findFirst({
       where: { secretHash },
       include: USER_PUBLIC_ID,
@@ -66,7 +73,7 @@ export class PrismaPasswordResetRepository implements PasswordResetRepository {
     return row ? toDomain(row) : null;
   }
 
-  async findForUser(userPublicId: string): Promise<PasswordReset | null> {
+  async findForUser(userPublicId: string): Promise<PasswordResetRequest | null> {
     const row = await this.prisma.passwordReset.findFirst({
       where: { user: { publicId: userPublicId } },
       orderBy: { createdAt: "desc" },

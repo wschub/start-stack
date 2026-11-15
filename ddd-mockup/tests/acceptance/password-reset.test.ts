@@ -10,6 +10,7 @@ import {
 import { User } from "../../src/contexts/identity/domain/aggregates/user.ts";
 import { FakePasswordHasher, InMemoryUserRepository } from "../helpers/fakes.ts";
 import {
+  identityEventBus,
   InMemoryPasswordResetRepository,
   RecordingPasswordResetNotifier,
 } from "../helpers/password-reset-fakes.ts";
@@ -18,23 +19,21 @@ import { InMemoryRefreshTokenRepository } from "../helpers/session-fakes.ts";
 const NEW_PASSWORD = "otra-clave-bastante-larga";
 
 async function build(rateLimits?: Partial<PasswordRateLimits>) {
-  const users = new InMemoryUserRepository();
-  const resets = new InMemoryPasswordResetRepository();
   const notifier = new RecordingPasswordResetNotifier();
+  const events = identityEventBus({
+    notifier,
+    refreshTokens: new InMemoryRefreshTokenRepository(),
+  });
+  const users = new InMemoryUserRepository(events);
+  const resets = new InMemoryPasswordResetRepository(events);
   const router = createPasswordRouter({
     requestPasswordReset: new RequestPasswordReset({
       users,
       resets,
-      notifier,
       linkTtlSeconds: 1800,
       codeTtlSeconds: 600,
     }),
-    resetPassword: new ResetPassword({
-      users,
-      resets,
-      refreshTokens: new InMemoryRefreshTokenRepository(),
-      hasher: new FakePasswordHasher(),
-    }),
+    resetPassword: new ResetPassword({ users, resets, hasher: new FakePasswordHasher() }),
     rateLimits,
   });
   await users.add(

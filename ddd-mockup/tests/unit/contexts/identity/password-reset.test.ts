@@ -6,6 +6,7 @@ import { User } from "../../../../src/contexts/identity/domain/aggregates/user.t
 import { AppError } from "../../../../src/shared/errors/app-error.ts";
 import { FakePasswordHasher, InMemoryUserRepository } from "../../../helpers/fakes.ts";
 import {
+  identityEventBus,
   InMemoryPasswordResetRepository,
   RecordingPasswordResetNotifier,
 } from "../../../helpers/password-reset-fakes.ts";
@@ -43,22 +44,22 @@ describe("recuperación de contraseña", () => {
   };
 
   beforeEach(async () => {
-    users = new InMemoryUserRepository();
-    resets = new InMemoryPasswordResetRepository();
     refreshTokens = new InMemoryRefreshTokenRepository();
     notifier = new RecordingPasswordResetNotifier();
+    const events = identityEventBus({ notifier, refreshTokens });
+    users = new InMemoryUserRepository(events);
+    resets = new InMemoryPasswordResetRepository(events);
     hasher = new FakePasswordHasher();
     clock = START;
     const now = () => clock;
     request = new RequestPasswordReset({
       users,
       resets,
-      notifier,
       linkTtlSeconds: 30 * 60,
       codeTtlSeconds: 10 * 60,
       now,
     });
-    reset = new ResetPassword({ users, resets, refreshTokens, hasher, now });
+    reset = new ResetPassword({ users, resets, hasher, now });
     user = User.create({
       email: "ana@example.com",
       passwordHash: "hashed:la-clave-anterior-larga",

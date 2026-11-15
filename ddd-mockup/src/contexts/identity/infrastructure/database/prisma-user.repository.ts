@@ -1,7 +1,9 @@
 import { Prisma, type PrismaClient } from "../../../../generated/prisma/client.ts";
 import { AppError } from "../../../../shared/errors/app-error.ts";
+import { type EventBus, NULL_EVENT_BUS } from "../../../../shared/events/event-bus.ts";
 import { DEFAULT_LOCALE, type Locale, SUPPORTED_LOCALES } from "../../../../shared/i18n/locale.ts";
 import { User, type UserStatus } from "../../domain/aggregates/user.ts";
+import { Email } from "../../domain/value-objects/email.ts";
 import type {
   UserListQuery,
   UserPage,
@@ -46,9 +48,11 @@ function toDomain(row: UserRow): User {
 
 export class PrismaUserRepository implements UserRepository {
   private readonly prisma: PrismaClient;
+  private readonly events: EventBus;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, events: EventBus = NULL_EVENT_BUS) {
     this.prisma = prisma;
+    this.events = events;
   }
 
   async add(user: User): Promise<void> {
@@ -60,10 +64,11 @@ export class PrismaUserRepository implements UserRepository {
       }
       throw error;
     }
+    await this.events.publish(user.pullEvents());
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const row = await this.prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    const row = await this.prisma.user.findUnique({ where: { email: Email.normalize(email) } });
     return row ? toDomain(row) : null;
   }
 
@@ -112,5 +117,6 @@ export class PrismaUserRepository implements UserRepository {
       }
       throw error;
     }
+    await this.events.publish(user.pullEvents());
   }
 }

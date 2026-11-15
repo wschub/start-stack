@@ -1,4 +1,4 @@
-import type { RefreshToken } from "../aggregates/refresh-token.ts";
+import type { RefreshToken } from "../entities/refresh-token.ts";
 
 export interface RefreshTokenRepository {
   add(token: RefreshToken): Promise<void>;

@@ -15,11 +15,17 @@ export interface UserPage {
 }
 
 export interface UserRepository {
-  /** Guarda un usuario nuevo. Lanza AppError conflict EMAIL_ALREADY_EXISTS si el email ya existe. */
+  /**
+   * Guarda un usuario nuevo y publica sus eventos de dominio.
+   * Lanza AppError conflict EMAIL_ALREADY_EXISTS si el email ya existe.
+   */
   add(user: User): Promise<void>;
   findByEmail(email: string): Promise<User | null>;
   findByPublicId(publicId: string): Promise<User | null>;
-  /** Guarda los cambios de un usuario existente. Lanza AppError not_found USER_NOT_FOUND si no existe. */
+  /**
+   * Guarda los cambios de un usuario existente y publica sus eventos de dominio.
+   * Lanza AppError not_found USER_NOT_FOUND si no existe.
+   */
   update(user: User): Promise<void>;
   /** Página de usuarios ordenada por correo. */
   list(query: UserListQuery): Promise<UserPage>;

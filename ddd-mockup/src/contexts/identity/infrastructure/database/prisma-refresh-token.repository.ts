@@ -1,5 +1,5 @@
 import type { PrismaClient } from "../../../../generated/prisma/client.ts";
-import type { RefreshToken } from "../../domain/aggregates/refresh-token.ts";
+import type { RefreshToken } from "../../domain/entities/refresh-token.ts";
 import type { RefreshTokenRepository } from "../../domain/repositories/refresh-token.repository.ts";
 
 export class PrismaRefreshTokenRepository implements RefreshTokenRepository {

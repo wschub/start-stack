@@ -1,5 +1,5 @@
 import type { Locale } from "../../../../shared/i18n/locale.ts";
-import type { PasswordResetMethod } from "../../domain/aggregates/password-reset.ts";
+import type { PasswordResetMethod } from "../../domain/aggregates/password-reset-request.ts";
 
 export interface PasswordResetMessage {
   email: string;

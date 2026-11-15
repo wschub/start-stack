@@ -1,4 +1,5 @@
 import { AppError } from "../../src/shared/errors/app-error.ts";
+import { type EventBus, NULL_EVENT_BUS } from "../../src/shared/events/event-bus.ts";
 import type { PasswordHasher } from "../../src/contexts/identity/application/ports/password-hasher.ts";
 import type { User } from "../../src/contexts/identity/domain/aggregates/user.ts";
 import type {
@@ -9,12 +10,19 @@ import type {
 
 export class InMemoryUserRepository implements UserRepository {
   readonly byEmail = new Map<string, User>();
+  private readonly events: EventBus;
+
+  /** Como el repositorio real, publica los eventos de los agregados que guarda. */
+  constructor(events: EventBus = NULL_EVENT_BUS) {
+    this.events = events;
+  }
 
   async add(user: User): Promise<void> {
     if (this.byEmail.has(user.email)) {
       throw new AppError("conflict", { code: "EMAIL_ALREADY_EXISTS" });
     }
     this.byEmail.set(user.email, user);
+    await this.events.publish(user.pullEvents());
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -45,6 +53,7 @@ export class InMemoryUserRepository implements UserRepository {
     if (!current) throw new AppError("not_found", { code: "USER_NOT_FOUND" });
     this.byEmail.delete(current.email);
     this.byEmail.set(user.email, user);
+    await this.events.publish(user.pullEvents());
   }
 }
 

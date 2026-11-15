@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { PasswordReset } from "../../../src/contexts/identity/domain/aggregates/password-reset.ts";
+import {
+  PasswordResetRequest,
+  type PasswordResetRequestProps,
+} from "../../../src/contexts/identity/domain/aggregates/password-reset-request.ts";
 import { PrismaPasswordResetRepository } from "../../../src/contexts/identity/infrastructure/database/prisma-password-reset.repository.ts";
 import { User } from "../../../src/contexts/identity/domain/aggregates/user.ts";
 import { PrismaUserRepository } from "../../../src/contexts/identity/infrastructure/database/prisma-user.repository.ts";
@@ -19,17 +22,18 @@ describe("PrismaPasswordResetRepository (Postgres real)", () => {
   const newUser = (email: string) =>
     User.create({ email, passwordHash: "hash", firstName: "Ana", lastName: "Gómez" });
 
-  const newReset = (overrides: Partial<PasswordReset> = {}): PasswordReset => ({
-    id: randomUUID(),
-    userPublicId: ana.publicId,
-    method: "link",
-    secretHash: randomUUID(),
-    expiresAt: LATER,
-    usedAt: null,
-    attempts: 0,
-    createdAt: NOW,
-    ...overrides,
-  });
+  const newReset = (overrides: Partial<PasswordResetRequestProps> = {}): PasswordResetRequest =>
+    PasswordResetRequest.restore({
+      id: randomUUID(),
+      userPublicId: ana.publicId,
+      method: "link",
+      secretHash: randomUUID(),
+      expiresAt: LATER,
+      usedAt: null,
+      attempts: 0,
+      createdAt: NOW,
+      ...overrides,
+    });
 
   beforeAll(async () => {
     db = await startTestDatabase();

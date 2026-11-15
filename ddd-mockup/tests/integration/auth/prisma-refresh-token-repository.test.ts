@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { IssueSession } from "../../../src/contexts/identity/application/commands/issue-session.command.ts";
 import { RefreshSession } from "../../../src/contexts/identity/application/commands/refresh-session.command.ts";
-import type { RefreshToken } from "../../../src/contexts/identity/domain/aggregates/refresh-token.ts";
+import type { RefreshToken } from "../../../src/contexts/identity/domain/entities/refresh-token.ts";
 import { hashRefreshToken } from "../../../src/contexts/identity/domain/services/refresh-token-hash.ts";
 import { PrismaRefreshTokenRepository } from "../../../src/contexts/identity/infrastructure/database/prisma-refresh-token.repository.ts";
 import { User } from "../../../src/contexts/identity/domain/aggregates/user.ts";

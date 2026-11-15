@@ -2,7 +2,7 @@ import type {
   AccessToken,
   AccessTokenService,
 } from "../../src/contexts/identity/application/ports/access-token-service.ts";
-import type { RefreshToken } from "../../src/contexts/identity/domain/aggregates/refresh-token.ts";
+import type { RefreshToken } from "../../src/contexts/identity/domain/entities/refresh-token.ts";
 import type { RefreshTokenRepository } from "../../src/contexts/identity/domain/repositories/refresh-token.repository.ts";
 
 export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
