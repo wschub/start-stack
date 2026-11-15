@@ -65,6 +65,9 @@ const schema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
 });
 
+/** Nombres de todas las variables que valida el esquema; .env.example debe documentar las mismas. */
+export const ENV_VARIABLES: readonly string[] = Object.keys(schema.shape);
+
 /** Las duraciones de los tokens están expresadas en segundos. */
 export type Env = z.infer<typeof schema>;
 
