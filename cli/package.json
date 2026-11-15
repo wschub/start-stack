@@ -1,0 +1,42 @@
+{
+  "name": "start-stack",
+  "version": "0.1.0",
+  "description": "Scaffold production-ready backends: pick an architecture, get a tested project.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "start-stack": "dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "sync-templates": "node scripts/sync-templates.ts",
+    "prepack": "npm run sync-templates && npm run build",
+    "test": "vitest run --project unit",
+    "test:e2e": "vitest run --project e2e",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.9.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.0.5"
+  }
+}

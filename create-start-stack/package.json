@@ -1,0 +1,19 @@
+{
+  "name": "create-start-stack",
+  "version": "0.1.0",
+  "description": "npm create start-stack <name>: shortcut for npx start-stack create <name>.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-start-stack": "bin.js"
+  },
+  "files": [
+    "bin.js"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "start-stack": "^0.1.0"
+  }
+}
