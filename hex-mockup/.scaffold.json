@@ -18,7 +18,14 @@
       "framework": "express",
       "orm": "prisma",
       "database": "postgres",
-      "auth": { "strategy": "jwt", "publicRegistration": true },
+      "auth": {
+        "strategy": "jwt",
+        "credentials": "password",
+        "publicRegistration": true,
+        "passwordRecovery": ["link", "code"],
+        "rbac": true
+      },
+      "notifications": { "provider": "log" },
       "testing": {
         "tdd": true,
         "levels": ["unit", "integration", "acceptance"],
