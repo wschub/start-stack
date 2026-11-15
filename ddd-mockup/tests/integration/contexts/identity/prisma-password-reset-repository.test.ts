@@ -7,6 +7,7 @@ import {
 import { PrismaPasswordResetRepository } from "../../../../src/contexts/identity/infrastructure/database/prisma-password-reset.repository.ts";
 import { User } from "../../../../src/contexts/identity/domain/aggregates/user.ts";
 import { PrismaUserRepository } from "../../../../src/contexts/identity/infrastructure/database/prisma-user.repository.ts";
+import { RecordingEventBus } from "../../../helpers/event-fakes.ts";
 import { startTestDatabase, type TestDatabase } from "../../../helpers/postgres.ts";
 
 const NOW = new Date("2026-11-15T10:00:00Z");
@@ -138,5 +139,52 @@ describe("PrismaPasswordResetRepository (Postgres real)", () => {
     await db.prisma.user.delete({ where: { publicId: ana.publicId } });
 
     expect(await db.prisma.passwordReset.count()).toBe(0);
+  });
+
+  describe("eventos de dominio", () => {
+    const issue = () =>
+      PasswordResetRequest.issue({
+        id: randomUUID(),
+        user: ana,
+        method: "code",
+        secret: "123456",
+        ttlSeconds: 600,
+        now: NOW,
+      });
+
+    it("replaceForUser publica password_reset.requested después de guardar la solicitud", async () => {
+      const events = new RecordingEventBus();
+      const publishing = new PrismaPasswordResetRepository(db.prisma, events);
+      const reset = issue();
+
+      await publishing.replaceForUser(reset);
+
+      expect(events.published).toMatchObject([
+        {
+          name: "password_reset.requested",
+          userId: ana.publicId,
+          email: "ana@example.com",
+          method: "code",
+          secret: "123456",
+        },
+      ]);
+      expect((await repository.findForUser(ana.publicId))?.id).toBe(reset.id);
+    });
+
+    it("el secreto en claro viaja en el evento, pero en la base solo queda su hash", async () => {
+      const reset = issue();
+      await repository.replaceForUser(reset);
+
+      const rows = await db.prisma.passwordReset.findMany();
+
+      expect(JSON.stringify(rows)).not.toContain("123456");
+      expect((await repository.findForUser(ana.publicId))?.matchesCode("123456")).toBe(true);
+    });
+
+    it("una solicitud leída de la base no trae eventos pendientes", async () => {
+      await repository.replaceForUser(issue());
+
+      expect((await repository.findForUser(ana.publicId))?.pullEvents()).toEqual([]);
+    });
   });
 });

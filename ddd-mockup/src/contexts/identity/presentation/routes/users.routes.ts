@@ -7,8 +7,8 @@ import {
 
 export interface UsersRouterDeps extends UsersControllerDeps {
   /**
-   * La autenticación y los permisos los gestiona otro módulo (auth). Este los recibe ya
-   * construidos desde composition.ts, sin importar nada de su capa de presentación.
+   * Middlewares de autenticación y de permisos, ya construidos en composition.ts. Todos los
+   * routers los reciben así, sean de este contexto o de otro.
    */
   authenticate: RequestHandler;
   authorize: (permission: string) => RequestHandler;

@@ -1,8 +1,9 @@
 import type { Locale } from "../i18n/locale.ts";
 
 /**
- * Un permiso es una clave estable "recurso:acción" (por ejemplo "users:read"). Cada módulo declara
- * los suyos en `application/permissions.ts` y composition.ts los reúne en un PermissionRegistry.
+ * Un permiso es una clave estable "recurso:acción" (por ejemplo "users:read"). Cada contexto
+ * declara los suyos en su capa de aplicación y composition.ts los reúne en un PermissionRegistry.
+ * `module` es la etiqueta con la que se agrupan en la pantalla de gestión de roles.
  */
 export interface PermissionDefinition {
   key: string;

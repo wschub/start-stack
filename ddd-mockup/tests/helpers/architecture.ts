@@ -1,18 +1,23 @@
 import { posix } from "node:path";
 
 /**
- * Función de aptitud de la arquitectura hexagonal: revisa los imports de src/ y devuelve los que
- * incumplen las reglas de dependencia entre capas (R1–R9 de docs/ARCHITECTURE.md).
+ * Función de aptitud de la arquitectura DDD: revisa los imports de src/ y devuelve los que
+ * incumplen las reglas de dependencia (R1–R12 de docs/ARCHITECTURE.md).
+ *
+ * Dentro de cada contexto las capas dependen hacia el dominio:
  *
  *   presentation ──► application ──► domain ◄── infrastructure
+ *
+ * Y cada contexto guarda su modelo para sí: de otro contexto solo se usa la capa de aplicación.
  *
  * Es una función pura: recibe un mapa "ruta → contenido" y no toca el disco.
  */
 
-export type Rule = "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "CROSS_MODULE";
+export type Rule =
+  "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9" | "R10" | "R11" | "R12";
 
 export interface Violation {
-  /** Archivo que contiene el import, por ejemplo "src/modules/auth/domain/entities/token.ts". */
+  /** Archivo que contiene el import, por ejemplo "src/contexts/identity/domain/aggregates/user.ts". */
   file: string;
   /** Especificador tal como está escrito en el import. */
   imported: string;
@@ -21,8 +26,19 @@ export interface Violation {
 
 type Layer = "domain" | "application" | "infrastructure" | "presentation";
 
+/** "contexts": contextos delimitados del negocio. "platform": capacidades técnicas (health…). */
+type Root = "contexts" | "platform";
+
 type Location =
-  | { kind: "layer"; module: string; layer: Layer }
+  | {
+      kind: "layer";
+      root: Root;
+      /** Contexto o capacidad, con su raíz: "contexts/identity", "platform/health". */
+      unit: string;
+      layer: Layer;
+      /** Carpeta dentro de la capa: "aggregates", "value-objects", "commands"… */
+      folder: string | undefined;
+    }
   | { kind: "shared" }
   | { kind: "generated" }
   | { kind: "composition" }
@@ -64,9 +80,16 @@ function locate(path: string): Location {
   if (path.startsWith("src/generated/")) return { kind: "generated" };
   if (path.startsWith("src/shared/")) return { kind: "shared" };
 
-  const [, root, module, layer] = path.split("/");
-  if ((root === "contexts" || root === "platform") && module && layer && LAYERS.includes(layer)) {
-    return { kind: "layer", module, layer: layer as Layer };
+  const [, root, name, layer, ...rest] = path.split("/");
+  if ((root === "contexts" || root === "platform") && name && layer && LAYERS.includes(layer)) {
+    return {
+      kind: "layer",
+      root,
+      unit: `${root}/${name}`,
+      layer: layer as Layer,
+      // Con un solo segmento restante el archivo está suelto en la capa, sin carpeta.
+      folder: rest.length > 1 ? rest[0] : undefined,
+    };
   }
   return { kind: "other" };
 }
@@ -125,10 +148,23 @@ function checkInternal(source: Location, target: Location): Rule | undefined {
   if (source.layer === "presentation" && target.layer === "infrastructure") return "R3";
   if (source.layer === "infrastructure" && target.layer === "presentation") return "R4";
 
-  const exposesInternals = target.layer === "infrastructure" || target.layer === "presentation";
-  if (target.module !== source.module && exposesInternals) return "CROSS_MODULE";
+  if (target.unit !== source.unit) {
+    if (source.root === "platform" && target.root === "contexts") return "R11";
+    if (target.layer !== "application") return "R10";
+  }
+
+  if (isDomainLeaf(source) && !isDomainLeaf(target)) return "R12";
 
   return undefined;
+}
+
+/** Los objetos de valor y los eventos son las hojas del dominio: no conocen a quien los usa. */
+function isDomainLeaf(location: Location): boolean {
+  return (
+    location.kind === "layer" &&
+    location.layer === "domain" &&
+    (location.folder === "value-objects" || location.folder === "events")
+  );
 }
 
 /** R8: el núcleo (dominio y aplicación) no conoce HTTP, aunque viva en shared. */

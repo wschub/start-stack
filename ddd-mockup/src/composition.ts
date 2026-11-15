@@ -51,7 +51,7 @@ import { subscribeIdentityEventHandlers } from "./contexts/identity/application/
 /** El código de 6 dígitos caduca antes que el enlace: es más fácil de adivinar. */
 const MAX_RESET_CODE_SECONDS = 10 * 60;
 
-/** Raíz de composición: el único lugar donde se conectan los adaptadores con los casos de uso. */
+/** Raíz de composición: el único lugar donde se conectan los adaptadores con los comandos y las consultas. */
 export interface CompositionOverrides {
   /** Sustituye al adaptador que escribe en el log (por ejemplo, por uno que envíe correo). */
   passwordResetNotifier?: PasswordResetNotifier;
@@ -76,7 +76,7 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     ttlSeconds: env.ACCESS_TOKEN_EXPIRATION_TIME,
   });
 
-  // Catálogo de permisos: cada módulo declara los suyos y aquí se reúnen. Un módulo nuevo solo
+  // Catálogo de permisos: cada contexto declara los suyos y aquí se reúnen. Uno nuevo solo
   // tiene que añadir su lista para que aparezca en la gestión de roles.
   const permissions = new PermissionRegistry([...AUTH_PERMISSIONS, ...USERS_PERMISSIONS]);
   const roles = new PrismaRoleRepository(prisma);

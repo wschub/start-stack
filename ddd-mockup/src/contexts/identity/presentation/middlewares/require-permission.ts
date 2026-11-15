@@ -9,7 +9,7 @@ export type PermissionGuard = (permission: string) => RequestHandler;
 
 /**
  * Los permisos se consultan en cada petición (no viajan en el token): un cambio de rol se aplica
- * al instante. Pedir un permiso que ningún módulo ha registrado es un error de programación y
+ * al instante. Pedir un permiso que nadie ha registrado es un error de programación y
  * falla al montar las rutas, no en producción con la primera petición.
  */
 export function createPermissionGuard(deps: {

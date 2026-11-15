@@ -5,6 +5,7 @@ import {
   User,
 } from "../../../../src/contexts/identity/domain/aggregates/user.ts";
 import { PrismaUserRepository } from "../../../../src/contexts/identity/infrastructure/database/prisma-user.repository.ts";
+import { RecordingEventBus } from "../../../helpers/event-fakes.ts";
 import { startTestDatabase, type TestDatabase } from "../../../helpers/postgres.ts";
 
 describe("PrismaUserRepository (Postgres real)", () => {
@@ -99,5 +100,64 @@ describe("PrismaUserRepository (Postgres real)", () => {
     expect(second.items.map((user) => user.email)).toEqual(["carla@example.com"]);
     expect(search.items.map((user) => user.email)).toEqual(["ana@example.com", "beto@example.com"]);
     expect(search.total).toBe(2);
+  });
+
+  describe("eventos de dominio", () => {
+    let events: RecordingEventBus;
+    let publishing: PrismaUserRepository;
+
+    beforeEach(() => {
+      events = new RecordingEventBus();
+      publishing = new PrismaUserRepository(db.prisma, events);
+    });
+
+    it("add publica user.registered después de guardar al usuario", async () => {
+      const user = newUser();
+
+      await publishing.add(user);
+
+      expect(events.published).toMatchObject([
+        { name: "user.registered", userId: user.publicId, email: "ana@example.com" },
+      ]);
+      expect(user.pullEvents()).toEqual([]);
+    });
+
+    it("si el alta falla no se publica nada", async () => {
+      await repository.add(newUser());
+
+      await expect(publishing.add(newUser())).rejects.toMatchObject({
+        code: "EMAIL_ALREADY_EXISTS",
+      });
+
+      expect(events.published).toEqual([]);
+    });
+
+    it("update publica los eventos de los cambios, en orden y una sola vez", async () => {
+      const user = newUser();
+      await repository.add(user);
+      const stored = await repository.findByPublicId(user.publicId);
+      const changed = stored?.changePassword("otro-hash").deactivate();
+      if (!changed) throw new Error("el usuario debería existir");
+
+      await publishing.update(changed);
+      await publishing.update(changed);
+
+      expect(events.names()).toEqual(["user.password_changed", "user.status_changed"]);
+    });
+
+    it("si update no encuentra al usuario no se publica nada", async () => {
+      const ghost = User.restore(newUser().toProps()).deactivate();
+
+      await expect(publishing.update(ghost)).rejects.toMatchObject({ code: "USER_NOT_FOUND" });
+
+      expect(events.published).toEqual([]);
+    });
+
+    it("un usuario leído de la base no trae eventos pendientes", async () => {
+      const user = newUser();
+      await repository.add(user);
+
+      expect((await repository.findByPublicId(user.publicId))?.pullEvents()).toEqual([]);
+    });
   });
 });
