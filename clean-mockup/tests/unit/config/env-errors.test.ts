@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvError, loadEnv } from "../../../../src/main/config/env.ts";
+import { EnvError, loadEnv } from "../../../src/config/env.ts";
 
 const valid = {
   DATABASE_URL: "postgresql://clean:clean@127.0.0.1:55434/clean_mockup",

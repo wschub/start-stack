@@ -30,13 +30,16 @@ src/
     security/            Argon2 y JWT
     notifications/       envío del enlace o el código de recuperación (hoy, al log)
     scheduler.ts         tareas periódicas
-  main/                  el único lugar que conoce todas las capas
-    server.ts            arranque: lee el entorno, levanta el servidor y gestiona el apagado
-    composition.ts       raíz de composición: crea los detalles y los conecta con los casos de uso
-    config/              variables de entorno validadas con Zod
-    cli/                 segundo punto de entrada: crear el primer superadministrador
+  main.ts                arranque: lee el entorno, levanta el servidor y gestiona el apagado
+  composition.ts         raíz de composición: crea los detalles y los conecta con los casos de uso
+  config/                variables de entorno validadas con Zod
+  cli/                   segundo punto de entrada: crear el primer superadministrador
   generated/prisma/      cliente de Prisma (no se versiona; se crea con `npm run db:generate`)
 ```
+
+`main.ts`, `composition.ts`, `config/` y `cli/` forman la capa **main**: lo único que conoce todas las
+demás. No es una carpeta porque no hace falta: están donde se esperan en cualquier proyecto de Node, y así
+los scripts de `package.json` y el `Dockerfile` son los de siempre.
 
 La primera división es **por capa** y, dentro de los casos de uso, **por funcionalidad**. Al abrir `src/`
 se ve la arquitectura; al abrir `src/use-cases/` se ve lo que la aplicación hace.
@@ -56,7 +59,7 @@ existe un caso de uso, y un caso de uso no sabe que existen HTTP, Express, Prism
 | `use-cases`          | Casos de uso, sus modelos de petición y respuesta, y los **puertos** que necesitan                  | HTTP, base de datos, cualquier librería             |
 | `interface-adapters` | Controladores, presentadores, esquemas de entrada y los tipos `HttpRequest` / `HttpResponse`        | Express, Prisma, clases concretas de casos de uso   |
 | `frameworks`         | Express, Prisma, Argon2, JWT, pino: las implementaciones de los puertos y el servidor web           | Configuración (`main`); un detalle no conoce a otro |
-| `main`               | Arranque, composición y configuración                                                               | Reglas de negocio                                   |
+| main                 | Arranque, composición y configuración                                                               | Reglas de negocio                                   |
 
 ### Cómo cruza el control una frontera
 
@@ -128,11 +131,11 @@ estas reglas. La lógica está en `tests/helpers/architecture.ts` y tiene sus pr
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | R1    | `entities/**` solo importa de `entities/**`.                                                                                                  |
 | R2    | `use-cases/**` solo importa de `entities/**` y `use-cases/**`.                                                                                |
-| R3    | `interface-adapters/**` importa de las capas interiores y de sí misma; nunca de `frameworks/**` ni de `main/**`.                              |
-| R4    | `frameworks/**` importa de las capas interiores y de sí misma; nunca de `main/**`. La configuración le llega por parámetros.                  |
+| R3    | `interface-adapters/**` importa de las capas interiores y de sí misma; nunca de `frameworks/**` ni de main.                                   |
+| R4    | `frameworks/**` importa de las capas interiores y de sí misma; nunca de main. La configuración le llega por parámetros.                       |
 | R5    | `entities/**` y `use-cases/**` no importan **ninguna** librería externa; solo módulos nativos de Node (`node:*`).                             |
 | R6    | `interface-adapters/**` solo usa una librería externa: `zod`, para validar la entrada.                                                        |
-| R7    | `src/generated/**` (cliente de Prisma) solo lo importan `frameworks/database/**` y `main/**`.                                                 |
+| R7    | `src/generated/**` (cliente de Prisma) solo lo importan `frameworks/database/**` y main.                                                      |
 | R8    | Los detalles no se conocen entre sí: cada carpeta de `frameworks/` (`express`, `database`, `security`…) solo importa de sí misma hacia fuera. |
 | R9    | `interface-adapters/**` solo importa **tipos** de `use-cases/**` (`import type`): depende de los puertos, no de las clases.                   |
 
@@ -147,11 +150,11 @@ R2: src/use-cases/auth/revoke-session.use-case.ts → ../../frameworks/security/
 ```
 
 La solución casi nunca es mover el import: es declarar un puerto en `use-cases/<funcionalidad>/ports`,
-implementarlo en `frameworks/` e inyectarlo desde `main/composition.ts`.
+implementarlo en `frameworks/` e inyectarlo desde `composition.ts`.
 
 ## Composición
 
-`src/main/composition.ts` es el **único** lugar donde se crean los detalles y se entregan a los casos de
+`src/composition.ts` es el **único** lugar donde se crean los detalles y se entregan a los casos de
 uso, y estos a los controladores. Nada más en el código hace `new PrismaUserRepository(...)`.
 
 ```ts
@@ -167,7 +170,7 @@ const authRouter = createAuthRouter({
 
 - Los casos de uso reciben sus dependencias por el constructor, tipadas con el **puerto**, nunca con la
   clase concreta.
-- Solo `main/` lee la configuración. El resto recibe los valores que necesita (duraciones, secreto,
+- Solo main lee la configuración. El resto recibe los valores que necesita (duraciones, secreto,
   orígenes permitidos) por parámetros.
 - `createApp` recibe los routers y las sondas ya construidos; por eso las pruebas de aceptación montan la
   aplicación con dobles en memoria, sin base de datos.
@@ -268,6 +271,9 @@ push. `npm run verify` lo ejecuta todo junto con lint, formato y tipos.
 
 ## Cómo añadir una funcionalidad a mano
 
+> La guía [ADDING-A-FEATURE.md](ADDING-A-FEATURE.md) hace este mismo recorrido con el código completo de
+> un ejemplo (productos), sus pruebas y el principio que protege cada paso. Esto es el resumen.
+
 Ejemplo: `products`. Trabaja de dentro hacia fuera, escribiendo primero la prueba de cada paso.
 
 1. **Entidad:** `src/entities/product.ts`, con sus validaciones (lanzando `AppError`). Pruebas en
@@ -288,6 +294,6 @@ Ejemplo: `products`. Trabaja de dentro hacia fuera, escribiendo primero la prueb
    `authorize`, protege cada ruta con su permiso y monta los controladores con `adapt`. Pruebas en
    `tests/acceptance/`.
 7. **Mensajes:** añade a `interface-adapters/presenters/messages.ts` (es y en) los códigos de error nuevos.
-8. **Composición:** en `main/composition.ts`, crea el repositorio y los casos de uso, añade el router a
+8. **Composición:** en `composition.ts`, crea el repositorio y los casos de uso, añade el router a
    `routers` y suma `PRODUCTS_PERMISSIONS` al `PermissionRegistry`.
 9. **Verifica:** `npm run verify`. El test de arquitectura confirmará que cada pieza está en su capa.

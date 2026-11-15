@@ -7,6 +7,8 @@ import { posix } from "node:path";
  *
  *   main ──► frameworks ──► interface-adapters ──► use-cases ──► entities
  *
+ * "main" son main.ts, composition.ts, config/ y cli/: lo único que conoce todas las capas.
+ *
  * Es una función pura: recibe un mapa "ruta → contenido" y no toca el disco.
  */
 
@@ -67,11 +69,26 @@ function importsOf(source: string): Import[] {
   return imports;
 }
 
+/**
+ * La capa "main" no es una carpeta: son los puntos de entrada, la composición y la configuración,
+ * en el mismo sitio que en cualquier proyecto de Node.
+ */
+export function isMain(path: string): boolean {
+  return (
+    path === "src/main.ts" ||
+    path === "src/composition.ts" ||
+    path.startsWith("src/config/") ||
+    path.startsWith("src/cli/")
+  );
+}
+
 function locate(path: string): Location {
   if (path.startsWith("src/generated/")) return { kind: "generated" };
 
+  if (isMain(path)) return { kind: "layer", layer: "main", folder: undefined };
+
   const [, layer, ...rest] = path.split("/");
-  const known = LAYERS.find((candidate) => candidate === layer);
+  const known = LAYERS.find((candidate) => candidate !== "main" && candidate === layer);
   if (!known) return { kind: "other" };
   return { kind: "layer", layer: known, folder: rest.length > 1 ? rest[0] : undefined };
 }
@@ -100,7 +117,8 @@ function checkInternal(source: Location, target: Location, typeOnly: boolean): R
       source.layer === "main" || (source.layer === "frameworks" && source.folder === "database");
     return allowed ? undefined : "R7";
   }
-  if (target.kind !== "layer") return undefined;
+  // Lo que no está en ninguna capa no es "más adentro" que nadie: solo main puede importarlo.
+  if (target.kind !== "layer") return INWARD_RULE[source.layer];
 
   if (LAYERS.indexOf(target.layer) > LAYERS.indexOf(source.layer)) {
     return INWARD_RULE[source.layer];

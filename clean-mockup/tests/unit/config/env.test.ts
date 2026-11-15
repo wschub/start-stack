@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EnvError, loadEnv } from "../../../../src/main/config/env.ts";
+import { EnvError, loadEnv } from "../../../src/config/env.ts";
 
 const SECRET = "0123456789abcdef0123456789abcdef-test";
 const valid = {

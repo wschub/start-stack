@@ -1,8 +1,8 @@
 import type { Server } from "node:http";
 import { composeApp } from "./composition.ts";
 import { type Env, EnvError, loadEnv } from "./config/env.ts";
-import { startServer } from "../frameworks/express/start-server.ts";
-import { scheduleEvery } from "../frameworks/scheduler.ts";
+import { startServer } from "./frameworks/express/start-server.ts";
+import { scheduleEvery } from "./frameworks/scheduler.ts";
 
 const TOKEN_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 

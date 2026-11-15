@@ -6,7 +6,7 @@ const USE_CASE = "src/use-cases/auth/log-in.use-case.ts";
 const CONTROLLER = "src/interface-adapters/controllers/auth.controller.ts";
 const ROUTES = "src/frameworks/express/routes/auth.routes.ts";
 const REPOSITORY = "src/frameworks/database/prisma-user.repository.ts";
-const COMPOSITION = "src/main/composition.ts";
+const COMPOSITION = "src/composition.ts";
 
 /** Reglas que incumple un único archivo. */
 function rulesOf(file: string, source: string): string[] {
@@ -44,10 +44,10 @@ describe("checkImports", () => {
         import type { UserRepository } from "../../use-cases/users/ports/user.repository.ts";`,
       [COMPOSITION]: `
         import { PrismaPg } from "@prisma/adapter-pg";
-        import { PrismaClient } from "../generated/prisma/client.ts";
-        import { PrismaUserRepository } from "../frameworks/database/prisma-user.repository.ts";
-        import { createAuthRouter } from "../frameworks/express/routes/auth.routes.ts";
-        import { LogIn } from "../use-cases/auth/log-in.use-case.ts";
+        import { PrismaClient } from "./generated/prisma/client.ts";
+        import { PrismaUserRepository } from "./frameworks/database/prisma-user.repository.ts";
+        import { createAuthRouter } from "./frameworks/express/routes/auth.routes.ts";
+        import { LogIn } from "./use-cases/auth/log-in.use-case.ts";
         import type { Env } from "./config/env.ts";`,
     };
 
@@ -68,7 +68,7 @@ describe("checkImports", () => {
       ["un puerto", "../use-cases/users/ports/user.repository.ts"],
       ["un adaptador de interfaz", "../interface-adapters/http/http.ts"],
       ["un framework", "../frameworks/database/prisma-user.repository.ts"],
-      ["la composición", "../main/composition.ts"],
+      ["la composición", "../composition.ts"],
     ])("rechaza %s", (_name, specifier) => {
       expect(rulesOf(ENTITY, `import type { X } from "${specifier}";`)).toEqual(["R1"]);
     });
@@ -89,7 +89,8 @@ describe("checkImports", () => {
       ["un presentador", "../../interface-adapters/presenters/problem.ts"],
       ["un repositorio concreto", "../../frameworks/database/prisma-user.repository.ts"],
       ["Express", "../../frameworks/express/app.ts"],
-      ["la configuración", "../../main/config/env.ts"],
+      ["la configuración", "../../config/env.ts"],
+      ["un comando de la terminal", "../../cli/create-admin.ts"],
     ])("rechaza %s", (_name, specifier) => {
       expect(rulesOf(USE_CASE, `import { x } from "${specifier}";`)).toEqual(["R2"]);
     });
@@ -108,14 +109,14 @@ describe("checkImports", () => {
     it.each([
       ["el adaptador de Express", "../../frameworks/express/adapt.ts"],
       ["un repositorio concreto", "../../frameworks/database/prisma-user.repository.ts"],
-      ["la composición", "../../main/composition.ts"],
-      ["la configuración", "../../main/config/env.ts"],
+      ["la composición", "../../composition.ts"],
+      ["la configuración", "../../config/env.ts"],
     ])("rechaza %s", (_name, specifier) => {
       expect(rulesOf(CONTROLLER, `import type { X } from "${specifier}";`)).toEqual(["R3"]);
     });
   });
 
-  describe("R4: los frameworks no importan main", () => {
+  describe("R4: los frameworks no importan main (main.ts, composition.ts, config/, cli/)", () => {
     it.each([
       ["Express", ROUTES],
       ["la base de datos", REPOSITORY],
@@ -124,18 +125,16 @@ describe("checkImports", () => {
       const up =
         file.split("/").length === 3 ? ".." : file.includes("/routes/") ? "../../.." : "../..";
 
-      expect(rulesOf(file, `import { loadEnv } from "${up}/main/config/env.ts";`)).toEqual(["R4"]);
-      expect(rulesOf(file, `import { composeApp } from "${up}/main/composition.ts";`)).toEqual([
-        "R4",
-      ]);
+      expect(rulesOf(file, `import { loadEnv } from "${up}/config/env.ts";`)).toEqual(["R4"]);
+      expect(rulesOf(file, `import { composeApp } from "${up}/composition.ts";`)).toEqual(["R4"]);
     });
 
     it("main sí importa de todas las capas", () => {
       const source = `
-        import { User } from "../entities/user.ts";
-        import { LogIn } from "../use-cases/auth/log-in.use-case.ts";
-        import { createAuthController } from "../interface-adapters/controllers/auth.controller.ts";
-        import { createApp } from "../frameworks/express/app.ts";
+        import { User } from "./entities/user.ts";
+        import { LogIn } from "./use-cases/auth/log-in.use-case.ts";
+        import { createAuthController } from "./interface-adapters/controllers/auth.controller.ts";
+        import { createApp } from "./frameworks/express/app.ts";
         import { loadEnv } from "./config/env.ts";`;
 
       expect(rulesOf(COMPOSITION, source)).toEqual([]);
@@ -207,7 +206,7 @@ describe("checkImports", () => {
         ),
       ).toEqual([]);
       expect(
-        rulesOf(COMPOSITION, `import { PrismaClient } from "../generated/prisma/client.ts";`),
+        rulesOf(COMPOSITION, `import { PrismaClient } from "./generated/prisma/client.ts";`),
       ).toEqual([]);
     });
   });
@@ -271,7 +270,7 @@ describe("checkImports", () => {
       expect(rulesOf("src/frameworks/express/routes/health.routes.ts", source("../../.."))).toEqual(
         [],
       );
-      expect(rulesOf(COMPOSITION, source(".."))).toEqual([]);
+      expect(rulesOf(COMPOSITION, source("."))).toEqual([]);
     });
   });
 
@@ -316,6 +315,31 @@ describe("checkImports", () => {
         import { LogIn } from "../../use-cases/auth/log-in.use-case.ts";`;
 
       expect(rulesOf(CONTROLLER, source)).toEqual(["R9"]);
+    });
+  });
+
+  describe("la capa main", () => {
+    it.each(["src/main.ts", "src/composition.ts", "src/config/env.ts", "src/cli/create-admin.ts"])(
+      "%s puede importar de todas las capas y usar librerías",
+      (file) => {
+        const up = file.split("/").length === 2 ? "." : "..";
+        const source = `
+          import pino from "pino";
+          import { createApp } from "${up}/frameworks/express/app.ts";
+          import { LogIn } from "${up}/use-cases/auth/log-in.use-case.ts";`;
+
+        expect(rulesOf(file, source)).toEqual([]);
+      },
+    );
+
+    it("lo que no está en ninguna capa solo puede importarlo main", () => {
+      const stray = (up: string) => `import { helper } from "${up}/utils/helper.ts";`;
+
+      expect(rulesOf(ENTITY, stray(".."))).toEqual(["R1"]);
+      expect(rulesOf(USE_CASE, stray("../.."))).toEqual(["R2"]);
+      expect(rulesOf(CONTROLLER, stray("../.."))).toEqual(["R3"]);
+      expect(rulesOf(REPOSITORY, stray("../.."))).toEqual(["R4"]);
+      expect(rulesOf(COMPOSITION, stray("."))).toEqual([]);
     });
   });
 

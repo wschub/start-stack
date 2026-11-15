@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidDuration, parseDuration } from "../../../../src/main/config/duration.ts";
+import { isValidDuration, parseDuration } from "../../../src/config/duration.ts";
 
 describe("parseDuration", () => {
   it.each([

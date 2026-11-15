@@ -22,7 +22,7 @@ export interface LogPasswordResetNotifierOptions {
 /**
  * Adaptador de desarrollo: en vez de enviar un correo, deja el enlace o el código en el log.
  * Para producción, implementa PasswordResetNotifier con tu proveedor (SMTP, Resend, SES…) y
- * conéctalo en main/composition.ts.
+ * conéctalo en composition.ts.
  */
 export class LogPasswordResetNotifier implements PasswordResetNotifier {
   private readonly logger: NotifierLogger;

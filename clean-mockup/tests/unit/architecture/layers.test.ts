@@ -2,10 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { checkImports } from "../../helpers/architecture.ts";
+import { checkImports, isMain } from "../../helpers/architecture.ts";
 
 const SRC = fileURLToPath(new URL("../../../src", import.meta.url));
-const LAYERS = ["entities", "use-cases", "interface-adapters", "frameworks", "main"];
+const FOLDERS = ["entities", "use-cases", "interface-adapters", "frameworks"];
 
 /** Todo el código de src/ (sin el cliente generado), con rutas del tipo "src/use-cases/…". */
 function readSources(): Record<string, string> {
@@ -23,10 +23,11 @@ describe("Clean Architecture", () => {
   const paths = Object.keys(sources);
 
   it("analiza el código real de todas las capas", () => {
-    for (const layer of LAYERS) {
-      expect(paths.filter((path) => path.startsWith(`src/${layer}/`)).length).toBeGreaterThan(3);
+    for (const folder of FOLDERS) {
+      expect(paths.filter((path) => path.startsWith(`src/${folder}/`)).length).toBeGreaterThan(3);
     }
-    expect(paths).toContain("src/main/composition.ts");
+    expect(paths.filter(isMain).length).toBeGreaterThan(3);
+    expect(paths).toContain("src/composition.ts");
     expect(paths.some((path) => path.startsWith("src/generated/"))).toBe(false);
   });
 
@@ -39,7 +40,9 @@ describe("Clean Architecture", () => {
   });
 
   it("todo el código vive en una de las cinco capas", () => {
-    const outside = paths.filter((path) => !LAYERS.includes(path.split("/")[1] ?? ""));
+    const outside = paths.filter(
+      (path) => !isMain(path) && !FOLDERS.includes(path.split("/")[1] ?? ""),
+    );
 
     expect(outside).toEqual([]);
   });

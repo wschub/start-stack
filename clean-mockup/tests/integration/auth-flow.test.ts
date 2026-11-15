@@ -1,7 +1,7 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { composeApp } from "../../src/main/composition.ts";
-import { loadEnv } from "../../src/main/config/env.ts";
+import { composeApp } from "../../src/composition.ts";
+import { loadEnv } from "../../src/config/env.ts";
 import { RecordingPasswordResetNotifier } from "../helpers/password-reset-fakes.ts";
 import { startTestDatabase, type TestDatabase } from "../helpers/postgres.ts";
 

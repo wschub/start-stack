@@ -3,8 +3,8 @@ import { Writable } from "node:stream";
 import { parseArgs } from "node:util";
 import { composeApp } from "../composition.ts";
 import { EnvError, loadEnv } from "../config/env.ts";
-import { AppError } from "../../entities/errors/app-error.ts";
-import { translate } from "../../interface-adapters/presenters/messages.ts";
+import { AppError } from "../entities/errors/app-error.ts";
+import { translate } from "../interface-adapters/presenters/messages.ts";
 
 /**
  * Crea el primer superadministrador (o concede el rol SUPER_ADMIN a una cuenta existente).

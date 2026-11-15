@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ENV_VARIABLES, EnvError, loadEnv } from "../../../../src/main/config/env.ts";
+import { ENV_VARIABLES, EnvError, loadEnv } from "../../../src/config/env.ts";
 
-const ENV_EXAMPLE = fileURLToPath(new URL("../../../../.env.example", import.meta.url));
+const ENV_EXAMPLE = fileURLToPath(new URL("../../../.env.example", import.meta.url));
 
 /** Lee un archivo .env sencillo: líneas CLAVE=valor, comentarios con # y comillas opcionales. */
 function parseEnvFile(text: string): Record<string, string> {
