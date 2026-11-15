@@ -6,13 +6,21 @@ import type { PermissionRegistry } from "../../../../shared/permissions/permissi
 import type { UserRepository } from "../../domain/repositories/user.repository.ts";
 import type { AssignUserRoles } from "../../application/commands/assign-user-roles.command.ts";
 import type { GetUserAccess, UserAccess } from "../../application/queries/get-user-access.query.ts";
-import type { ManageRoles } from "../../application/commands/manage-roles.command.ts";
+import type { CreateRole } from "../../application/commands/create-role.command.ts";
+import type { DeleteRole } from "../../application/commands/delete-role.command.ts";
+import type { UpdateRole } from "../../application/commands/update-role.command.ts";
+import type { GetRole } from "../../application/queries/get-role.query.ts";
+import type { ListRoles } from "../../application/queries/list-roles.query.ts";
 import { authenticatedUser } from "../middlewares/require-auth.ts";
 import { assignRolesSchema, createRoleSchema, updateRoleSchema } from "../schemas/role.schemas.ts";
 
 export interface RolesControllerDeps {
   registry: PermissionRegistry;
-  manageRoles: ManageRoles;
+  listRoles: ListRoles;
+  getRole: GetRole;
+  createRole: CreateRole;
+  updateRole: UpdateRole;
+  deleteRole: DeleteRole;
   getUserAccess: GetUserAccess;
   assignUserRoles: AssignUserRoles;
   users: UserRepository;
@@ -39,25 +47,25 @@ export function createRolesController(deps: RolesControllerDeps) {
   };
 
   const list: RequestHandler = async (_req, res) => {
-    res.json({ roles: await deps.manageRoles.list() });
+    res.json({ roles: await deps.listRoles.execute() });
   };
 
   const get: RequestHandler = async (req, res) => {
-    res.json({ role: await deps.manageRoles.get(idOf(req.params.id)) });
+    res.json({ role: await deps.getRole.execute(idOf(req.params.id)) });
   };
 
   const create: RequestHandler = async (req, res) => {
-    const role = await deps.manageRoles.create(parseBody(createRoleSchema, req.body));
+    const role = await deps.createRole.execute(parseBody(createRoleSchema, req.body));
     res.status(201).json({ role });
   };
 
   const update: RequestHandler = async (req, res) => {
     const changes = parseBody(updateRoleSchema, req.body);
-    res.json({ role: await deps.manageRoles.update(idOf(req.params.id), changes) });
+    res.json({ role: await deps.updateRole.execute({ publicId: idOf(req.params.id), changes }) });
   };
 
   const remove: RequestHandler = async (req, res) => {
-    await deps.manageRoles.remove(idOf(req.params.id));
+    await deps.deleteRole.execute(idOf(req.params.id));
     res.status(204).end();
   };
 

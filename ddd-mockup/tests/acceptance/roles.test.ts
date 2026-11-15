@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { AssignUserRoles } from "../../src/contexts/identity/application/commands/assign-user-roles.command.ts";
 import { GetUserAccess } from "../../src/contexts/identity/application/queries/get-user-access.query.ts";
-import { ManageRoles } from "../../src/contexts/identity/application/commands/manage-roles.command.ts";
+import { CreateRole } from "../../src/contexts/identity/application/commands/create-role.command.ts";
+import { DeleteRole } from "../../src/contexts/identity/application/commands/delete-role.command.ts";
+import { UpdateRole } from "../../src/contexts/identity/application/commands/update-role.command.ts";
+import { GetRole } from "../../src/contexts/identity/application/queries/get-role.query.ts";
+import { ListRoles } from "../../src/contexts/identity/application/queries/list-roles.query.ts";
 import { Role } from "../../src/contexts/identity/domain/aggregates/role.ts";
 import { requireAuth } from "../../src/contexts/identity/presentation/middlewares/require-auth.ts";
 import { createPermissionGuard } from "../../src/contexts/identity/presentation/middlewares/require-permission.ts";
@@ -25,7 +29,11 @@ async function build() {
     authenticate: requireAuth({ accessTokens: new FakeAccessTokenService(), users }),
     authorize: createPermissionGuard({ registry, getUserAccess }),
     registry,
-    manageRoles: new ManageRoles({ roles, registry }),
+    listRoles: new ListRoles({ roles, registry }),
+    getRole: new GetRole({ roles, registry }),
+    createRole: new CreateRole({ roles, registry }),
+    updateRole: new UpdateRole({ roles, registry }),
+    deleteRole: new DeleteRole({ roles }),
     getUserAccess,
     assignUserRoles: new AssignUserRoles({ users, roles, getUserAccess }),
     users,

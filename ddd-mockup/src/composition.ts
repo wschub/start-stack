@@ -27,8 +27,11 @@ import { AUTH_PERMISSIONS } from "./contexts/identity/application/auth-permissio
 import { AssignUserRoles } from "./contexts/identity/application/commands/assign-user-roles.command.ts";
 import { CreateSuperAdmin } from "./contexts/identity/application/commands/create-super-admin.command.ts";
 import { GetUserAccess } from "./contexts/identity/application/queries/get-user-access.query.ts";
-import { ManageRoles } from "./contexts/identity/application/commands/manage-roles.command.ts";
-import { ProtectSuperAdmins } from "./contexts/identity/application/commands/protect-super-admins.command.ts";
+import { CreateRole } from "./contexts/identity/application/commands/create-role.command.ts";
+import { DeleteRole } from "./contexts/identity/application/commands/delete-role.command.ts";
+import { UpdateRole } from "./contexts/identity/application/commands/update-role.command.ts";
+import { GetRole } from "./contexts/identity/application/queries/get-role.query.ts";
+import { ListRoles } from "./contexts/identity/application/queries/list-roles.query.ts";
 import { PrismaRoleRepository } from "./contexts/identity/infrastructure/database/prisma-role.repository.ts";
 import {
   authenticatedUser,
@@ -135,7 +138,11 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     authenticate,
     authorize,
     registry: permissions,
-    manageRoles: new ManageRoles({ roles, registry: permissions }),
+    listRoles: new ListRoles({ roles, registry: permissions }),
+    getRole: new GetRole({ roles, registry: permissions }),
+    createRole: new CreateRole({ roles, registry: permissions }),
+    updateRole: new UpdateRole({ roles, registry: permissions }),
+    deleteRole: new DeleteRole({ roles }),
     getUserAccess,
     assignUserRoles: new AssignUserRoles({ users, roles, getUserAccess }),
     users,
@@ -146,10 +153,7 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     currentUserId: (res) => authenticatedUser(res).publicId,
     listUsers: new ListUsers({ users }),
     getUser: new GetUser({ users }),
-    changeUserStatus: new ChangeUserStatus({
-      users,
-      guard: new ProtectSuperAdmins({ getUserAccess }),
-    }),
+    changeUserStatus: new ChangeUserStatus({ users, roles }),
   });
 
   const app = createApp({

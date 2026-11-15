@@ -2,7 +2,6 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { GetUserAccess } from "../../src/contexts/identity/application/queries/get-user-access.query.ts";
-import { ProtectSuperAdmins } from "../../src/contexts/identity/application/commands/protect-super-admins.command.ts";
 import { Role } from "../../src/contexts/identity/domain/aggregates/role.ts";
 import {
   authenticatedUser,
@@ -31,10 +30,7 @@ async function build() {
     currentUserId: (res) => authenticatedUser(res).publicId,
     listUsers: new ListUsers({ users }),
     getUser: new GetUser({ users }),
-    changeUserStatus: new ChangeUserStatus({
-      users,
-      guard: new ProtectSuperAdmins({ getUserAccess }),
-    }),
+    changeUserStatus: new ChangeUserStatus({ users, roles }),
   });
 
   const userWith = async (email: string, permissions: string[] | "SUPER_ADMIN") => {

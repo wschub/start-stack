@@ -1,6 +1,12 @@
 import { AppError } from "../../../../shared/errors/app-error.ts";
 import type { UserRepository } from "../../domain/repositories/user.repository.ts";
+import type { Role } from "../../domain/aggregates/role.ts";
 import type { RoleRepository } from "../../domain/repositories/role.repository.ts";
+import {
+  assertActorIsSuperAdmin,
+  assertNotLastSuperAdmin,
+  changesSuperAdminMembership,
+} from "../../domain/services/super-admin-policy.ts";
 import type { GetUserAccess, UserAccess } from "../queries/get-user-access.query.ts";
 
 export interface AssignUserRolesInput {
@@ -31,24 +37,20 @@ export class AssignUserRoles {
     if (!user) throw new AppError("not_found", { code: "USER_NOT_FOUND" });
 
     const roleIds = [...new Set(input.roleIds)];
-    const requested = await Promise.all(roleIds.map((id) => this.roles.findByPublicId(id)));
-    if (requested.some((role) => role === null)) {
+    const found = await Promise.all(roleIds.map((id) => this.roles.findByPublicId(id)));
+    const requested = found.filter((role): role is Role => role !== null);
+    if (requested.length !== roleIds.length) {
       throw new AppError("validation", { code: "UNKNOWN_ROLE", details: { field: "roleIds" } });
     }
 
     const current = await this.roles.findByUser(user.publicId);
-    const superAdmin = current.find((role) => role.isSuperAdmin());
-    const willBeSuperAdmin = requested.some((role) => role?.isSuperAdmin());
+    if (changesSuperAdminMembership(current, requested)) {
+      assertActorIsSuperAdmin(await this.roles.findByUser(input.actorPublicId));
 
-    if ((superAdmin !== undefined) !== willBeSuperAdmin) {
-      // Solo un superadministrador concede o retira el rol: así nadie escala privilegios con
-      // el permiso de asignar roles.
-      const actor = await this.getUserAccess.execute(input.actorPublicId);
-      if (!actor.isSuperAdmin) throw new AppError("forbidden", { code: "SUPER_ADMIN_REQUIRED" });
-    }
-    if (superAdmin && !willBeSuperAdmin && user.isActive()) {
-      const remaining = await this.roles.countActiveUsersWithRole(superAdmin.publicId);
-      if (remaining <= 1) throw new AppError("conflict", { code: "LAST_SUPER_ADMIN" });
+      const superAdmin = current.find((role) => role.isSuperAdmin());
+      if (superAdmin && user.isActive()) {
+        assertNotLastSuperAdmin(await this.roles.countActiveUsersWithRole(superAdmin.publicId));
+      }
     }
 
     await this.roles.setUserRoles(user.publicId, roleIds);
