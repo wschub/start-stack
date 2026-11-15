@@ -16,7 +16,9 @@
     "format:check": "prettier --check .",
     "verify": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "prepare": "cd .. && husky hex-mockup/.husky || true",
-    "db:migrate": "prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy",
+    "admin:create": "tsx --env-file=.env src/cli/create-admin.ts",
+    "admin:create:prod": "node --env-file-if-exists=.env dist/cli/create-admin.js"
   },
   "type": "module",
   "devDependencies": {

@@ -1,7 +1,11 @@
 import { AppError } from "../../src/shared/errors/app-error.ts";
 import type { PasswordHasher } from "../../src/modules/auth/application/ports/password-hasher.ts";
 import type { User } from "../../src/modules/users/domain/entities/user.entity.ts";
-import type { UserRepository } from "../../src/modules/users/domain/repositories/user.repository.ts";
+import type {
+  UserListQuery,
+  UserPage,
+  UserRepository,
+} from "../../src/modules/users/domain/repositories/user.repository.ts";
 
 export class InMemoryUserRepository implements UserRepository {
   readonly byEmail = new Map<string, User>();
@@ -19,6 +23,21 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findByPublicId(publicId: string): Promise<User | null> {
     return [...this.byEmail.values()].find((user) => user.publicId === publicId) ?? null;
+  }
+
+  async list(query: UserListQuery): Promise<UserPage> {
+    const search = query.search?.toLowerCase();
+    const matches = [...this.byEmail.values()]
+      .filter(
+        (user) =>
+          !search ||
+          [user.email, user.firstName, user.lastName].some((value) =>
+            value.toLowerCase().includes(search),
+          ),
+      )
+      .sort((a, b) => a.email.localeCompare(b.email));
+    const start = (query.page - 1) * query.pageSize;
+    return { items: matches.slice(start, start + query.pageSize), total: matches.length };
   }
 
   async update(user: User): Promise<void> {

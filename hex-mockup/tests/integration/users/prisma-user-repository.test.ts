@@ -81,4 +81,20 @@ describe("PrismaUserRepository (Postgres real)", () => {
       code: "USER_NOT_FOUND",
     });
   });
+
+  it("list pagina por correo, busca sin distinguir mayúsculas y devuelve el total", async () => {
+    await repository.add(newUser({ email: "carla@example.com", firstName: "Carla" }));
+    await repository.add(newUser({ email: "ana@example.com", firstName: "Ana" }));
+    await repository.add(newUser({ email: "beto@example.com", lastName: "ANAYA" }));
+
+    const first = await repository.list({ page: 1, pageSize: 2 });
+    const second = await repository.list({ page: 2, pageSize: 2 });
+    const search = await repository.list({ page: 1, pageSize: 10, search: "ana" });
+
+    expect(first.items.map((user) => user.email)).toEqual(["ana@example.com", "beto@example.com"]);
+    expect(first.total).toBe(3);
+    expect(second.items.map((user) => user.email)).toEqual(["carla@example.com"]);
+    expect(search.items.map((user) => user.email)).toEqual(["ana@example.com", "beto@example.com"]);
+    expect(search.total).toBe(2);
+  });
 });

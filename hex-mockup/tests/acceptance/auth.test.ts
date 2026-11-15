@@ -2,13 +2,16 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { AuthenticateUser } from "../../src/modules/auth/application/use-cases/authenticate-user.use-case.ts";
+import { GetUserAccess } from "../../src/modules/auth/application/use-cases/get-user-access.use-case.ts";
 import { IssueSession } from "../../src/modules/auth/application/use-cases/issue-session.use-case.ts";
 import { RegisterUser } from "../../src/modules/auth/application/use-cases/register-user.use-case.ts";
+import { Role } from "../../src/modules/auth/domain/entities/role.ts";
 import { hashRefreshToken } from "../../src/modules/auth/domain/services/refresh-token-hash.ts";
 import { JoseAccessTokenService } from "../../src/modules/auth/infrastructure/security/jose-access-token-service.ts";
 import { createAuthRouter } from "../../src/modules/auth/presentation/routes/auth.routes.ts";
 import { User } from "../../src/modules/users/domain/entities/user.entity.ts";
 import { FakePasswordHasher, InMemoryUserRepository } from "../helpers/fakes.ts";
+import { InMemoryRoleRepository, SUPER_ADMIN_ID, testRegistry } from "../helpers/role-fakes.ts";
 import { InMemoryRefreshTokenRepository } from "../helpers/session-fakes.ts";
 
 const PASSWORD = "una-clave-bastante-larga";
@@ -24,18 +27,20 @@ function build(options: { publicRegistration?: boolean; secure?: boolean } = {})
   const users = new InMemoryUserRepository();
   const hasher = new FakePasswordHasher();
   const tokens = new InMemoryRefreshTokenRepository();
+  const roles = new InMemoryRoleRepository();
   const accessTokens = new JoseAccessTokenService(tokenOptions);
   const issueSession = new IssueSession({ tokens, accessTokens, refreshTtlSeconds: REFRESH_TTL });
   const router = createAuthRouter({
     registerUser: new RegisterUser({ users, hasher }),
     authenticateUser: new AuthenticateUser({ users, hasher }),
     issueSession,
+    getUserAccess: new GetUserAccess({ roles, registry: testRegistry() }),
     accessTokens,
     users,
     publicRegistration: options.publicRegistration ?? true,
     refreshCookie: { secure: options.secure ?? false, sameSite: "strict" },
   });
-  return { app: createApp({ routers: [router] }), users, tokens, accessTokens };
+  return { app: createApp({ routers: [router] }), users, tokens, accessTokens, roles };
 }
 
 const registration = {
@@ -238,6 +243,37 @@ describe("GET /auth/me", () => {
     expect(res.status).toBe(200);
     expect(res.body.user.publicId).toBe(user.publicId);
     expect(JSON.stringify(res.body)).not.toMatch(/hash/i);
+  });
+
+  it("incluye roles y permisos vacíos para un usuario sin roles", async () => {
+    const { app, users, accessTokens } = build();
+    const user = await seedUser(users);
+    const { token } = await accessTokens.issue(user.publicId);
+
+    const res = await request(app).get("/auth/me").set("Authorization", `Bearer ${token}`);
+
+    expect(res.body.roles).toEqual([]);
+    expect(res.body.permissions).toEqual([]);
+  });
+
+  it("incluye los nombres de sus roles y la unión de sus permisos", async () => {
+    const { app, users, accessTokens, roles } = build();
+    const user = await seedUser(users);
+    const role = Role.create({ name: "Soporte", permissions: ["users:read"] });
+    await roles.add(role);
+    await roles.setUserRoles(user.publicId, [role.publicId, SUPER_ADMIN_ID]);
+    const { token } = await accessTokens.issue(user.publicId);
+
+    const res = await request(app).get("/auth/me").set("Authorization", `Bearer ${token}`);
+
+    expect(res.body.roles).toEqual(["SUPER_ADMIN", "Soporte"]);
+    expect(res.body.permissions).toEqual([
+      "roles:read",
+      "roles:manage",
+      "roles:assign",
+      "users:read",
+      "users:update",
+    ]);
   });
 
   it("responde 401 UNAUTHENTICATED sin cabecera o con otro esquema", async () => {

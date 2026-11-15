@@ -21,6 +21,7 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
   let db: TestDatabase;
   let app: ReturnType<typeof composeApp>["app"];
   let shutdown: () => Promise<void>;
+  let createSuperAdmin: ReturnType<typeof composeApp>["createSuperAdmin"];
   const notifier = new RecordingPasswordResetNotifier();
 
   beforeAll(async () => {
@@ -35,6 +36,7 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
     const composed = composeApp(env, { passwordResetNotifier: notifier });
     app = composed.app;
     shutdown = composed.shutdown;
+    createSuperAdmin = composed.createSuperAdmin;
   });
 
   afterAll(async () => {
@@ -154,6 +156,97 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
 
     const user = await db.prisma.user.findUniqueOrThrow({ where: { email } });
     expect(user.passwordHash).toMatch(/^\$argon2id\$/);
+  });
+
+  it("RBAC: el superadministrador crea un rol, lo asigna y el permiso se aplica al instante", async () => {
+    const admin = { email: "root@example.com", password: PASSWORD };
+    const created = await createSuperAdmin.execute({
+      ...admin,
+      firstName: "Root",
+      lastName: "Admin",
+    });
+    expect(created.created).toBe(true);
+
+    const member = { email: "soporte@example.com", password: PASSWORD };
+    const registered = await request(app)
+      .post("/auth/register")
+      .send({ ...member, firstName: "So", lastName: "Porte" });
+    const memberId: string = registered.body.user.publicId;
+
+    const tokenOf = async (credentials: { email: string; password: string }) => {
+      const login = await request(app).post("/auth/login").send(credentials);
+      return `Bearer ${login.body.accessToken as string}`;
+    };
+    const rootAuth = await tokenOf(admin);
+    const memberAuth = await tokenOf(member);
+
+    const rootMe = await request(app).get("/auth/me").set("Authorization", rootAuth);
+    expect(rootMe.body.roles).toEqual(["SUPER_ADMIN"]);
+    expect(rootMe.body.permissions).toEqual([
+      "roles:read",
+      "roles:manage",
+      "roles:assign",
+      "users:read",
+      "users:update",
+    ]);
+
+    // Recién registrado no tiene permisos.
+    const denied = await request(app).get("/users").set("Authorization", memberAuth);
+    expect([denied.status, denied.body.code]).toEqual([403, "PERMISSION_DENIED"]);
+
+    const catalog = await request(app).get("/permissions").set("Authorization", rootAuth);
+    expect(catalog.body.groups.map((group: { module: string }) => group.module)).toEqual([
+      "auth",
+      "users",
+    ]);
+
+    const role = await request(app)
+      .post("/roles")
+      .set("Authorization", rootAuth)
+      .send({ name: "Soporte", permissions: ["users:read"] });
+    expect(role.status).toBe(201);
+    const roleId: string = role.body.role.publicId;
+
+    const assigned = await request(app)
+      .put(`/users/${memberId}/roles`)
+      .set("Authorization", rootAuth)
+      .send({ roleIds: [roleId] });
+    expect(assigned.body.permissions).toEqual(["users:read"]);
+
+    // Mismo token de antes: el permiso nuevo ya vale.
+    const allowed = await request(app)
+      .get("/users?search=soporte")
+      .set("Authorization", memberAuth);
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.items[0].email).toBe(member.email);
+    const stillDenied = await request(app)
+      .patch(`/users/${memberId}/status`)
+      .set("Authorization", memberAuth)
+      .send({ status: "INACTIVE" });
+    expect(stillDenied.status).toBe(403);
+
+    // Sin el rol, vuelve a quedarse fuera.
+    expect(
+      (await request(app).delete(`/roles/${roleId}`).set("Authorization", rootAuth)).status,
+    ).toBe(204);
+    expect((await request(app).get("/users").set("Authorization", memberAuth)).status).toBe(403);
+
+    // El superadministrador desactiva la cuenta y deja de poder entrar.
+    const off = await request(app)
+      .patch(`/users/${memberId}/status`)
+      .set("Authorization", rootAuth)
+      .send({ status: "INACTIVE" });
+    expect(off.body.user.status).toBe("INACTIVE");
+    const login = await request(app).post("/auth/login").send(member);
+    expect([login.status, login.body.code]).toEqual([403, "ACCOUNT_INACTIVE"]);
+
+    // Y el sistema nunca se queda sin superadministrador.
+    const rootId: string = rootMe.body.user.publicId;
+    const last = await request(app)
+      .put(`/users/${rootId}/roles`)
+      .set("Authorization", rootAuth)
+      .send({ roleIds: [] });
+    expect([last.status, last.body.code]).toEqual([409, "LAST_SUPER_ADMIN"]);
   });
 
   it("rechaza al CORS desde un origen que no está en la lista", async () => {

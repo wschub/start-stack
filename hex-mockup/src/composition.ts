@@ -23,6 +23,25 @@ import { createPasswordRouter } from "./modules/auth/presentation/routes/passwor
 import { createSessionRouter } from "./modules/auth/presentation/routes/session.routes.ts";
 import { PrismaReadinessProbe } from "./modules/health/infrastructure/database/prisma-readiness-probe.ts";
 import { PrismaUserRepository } from "./modules/users/infrastructure/database/prisma-user.repository.ts";
+import { AUTH_PERMISSIONS } from "./modules/auth/application/permissions.ts";
+import { AssignUserRoles } from "./modules/auth/application/use-cases/assign-user-roles.use-case.ts";
+import { CreateSuperAdmin } from "./modules/auth/application/use-cases/create-super-admin.use-case.ts";
+import { GetUserAccess } from "./modules/auth/application/use-cases/get-user-access.use-case.ts";
+import { ManageRoles } from "./modules/auth/application/use-cases/manage-roles.use-case.ts";
+import { ProtectSuperAdmins } from "./modules/auth/application/use-cases/protect-super-admins.use-case.ts";
+import { PrismaRoleRepository } from "./modules/auth/infrastructure/database/prisma-role.repository.ts";
+import {
+  authenticatedUser,
+  requireAuth,
+} from "./modules/auth/presentation/middlewares/require-auth.ts";
+import { createPermissionGuard } from "./modules/auth/presentation/middlewares/require-permission.ts";
+import { createRolesRouter } from "./modules/auth/presentation/routes/roles.routes.ts";
+import { USERS_PERMISSIONS } from "./modules/users/application/permissions.ts";
+import { ChangeUserStatus } from "./modules/users/application/use-cases/change-user-status.use-case.ts";
+import { GetUser } from "./modules/users/application/use-cases/get-user.use-case.ts";
+import { ListUsers } from "./modules/users/application/use-cases/list-users.use-case.ts";
+import { createUsersRouter } from "./modules/users/presentation/routes/users.routes.ts";
+import { PermissionRegistry } from "./shared/permissions/permission.ts";
 
 /** El código de 6 dígitos caduca antes que el enlace: es más fácil de adivinar. */
 const MAX_RESET_CODE_SECONDS = 10 * 60;
@@ -49,6 +68,15 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     audience: env.JWT_AUDIENCE,
     ttlSeconds: env.ACCESS_TOKEN_EXPIRATION_TIME,
   });
+
+  // Catálogo de permisos: cada módulo declara los suyos y aquí se reúnen. Un módulo nuevo solo
+  // tiene que añadir su lista para que aparezca en la gestión de roles.
+  const permissions = new PermissionRegistry([...AUTH_PERMISSIONS, ...USERS_PERMISSIONS]);
+  const roles = new PrismaRoleRepository(prisma);
+  const getUserAccess = new GetUserAccess({ roles, registry: permissions });
+  const authenticate = requireAuth({ accessTokens, users });
+  const authorize = createPermissionGuard({ registry: permissions, getUserAccess });
+
   const issueSession = new IssueSession({
     tokens: refreshTokens,
     accessTokens,
@@ -63,6 +91,7 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     registerUser: new RegisterUser({ users, hasher }),
     authenticateUser: new AuthenticateUser({ users, hasher }),
     issueSession,
+    getUserAccess,
     accessTokens,
     users,
     publicRegistration: env.PUBLIC_REGISTRATION,
@@ -94,9 +123,30 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     resetPassword: new ResetPassword({ users, resets: passwordResets, refreshTokens, hasher }),
   });
 
+  const rolesRouter = createRolesRouter({
+    authenticate,
+    authorize,
+    registry: permissions,
+    manageRoles: new ManageRoles({ roles, registry: permissions }),
+    getUserAccess,
+    assignUserRoles: new AssignUserRoles({ users, roles, getUserAccess }),
+    users,
+  });
+  const usersRouter = createUsersRouter({
+    authenticate,
+    authorize,
+    currentUserId: (res) => authenticatedUser(res).publicId,
+    listUsers: new ListUsers({ users }),
+    getUser: new GetUser({ users }),
+    changeUserStatus: new ChangeUserStatus({
+      users,
+      guard: new ProtectSuperAdmins({ getUserAccess }),
+    }),
+  });
+
   const app = createApp({
     readinessProbes: [new PrismaReadinessProbe(prisma)],
-    routers: [authRouter, sessionRouter, passwordRouter],
+    routers: [authRouter, sessionRouter, passwordRouter, rolesRouter, usersRouter],
     corsOrigins: env.CORS_ORIGINS,
     trustProxy: env.TRUST_PROXY,
     logger,
@@ -107,6 +157,7 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     logger,
     shutdown: () => prisma.$disconnect(),
     purgeExpiredTokens: new PurgeExpiredRefreshTokens({ tokens: refreshTokens }),
+    createSuperAdmin: new CreateSuperAdmin({ users, roles, hasher }),
     purgeExpiredPasswordResets: new PurgeExpiredPasswordResets({ resets: passwordResets }),
   };
 }

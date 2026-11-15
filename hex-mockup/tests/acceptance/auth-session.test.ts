@@ -2,6 +2,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { AuthenticateUser } from "../../src/modules/auth/application/use-cases/authenticate-user.use-case.ts";
+import { GetUserAccess } from "../../src/modules/auth/application/use-cases/get-user-access.use-case.ts";
 import { IssueSession } from "../../src/modules/auth/application/use-cases/issue-session.use-case.ts";
 import { RefreshSession } from "../../src/modules/auth/application/use-cases/refresh-session.use-case.ts";
 import { RegisterUser } from "../../src/modules/auth/application/use-cases/register-user.use-case.ts";
@@ -11,6 +12,7 @@ import { createAuthRouter } from "../../src/modules/auth/presentation/routes/aut
 import { createSessionRouter } from "../../src/modules/auth/presentation/routes/session.routes.ts";
 import { User } from "../../src/modules/users/domain/entities/user.entity.ts";
 import { FakePasswordHasher, InMemoryUserRepository } from "../helpers/fakes.ts";
+import { InMemoryRoleRepository, testRegistry } from "../helpers/role-fakes.ts";
 import { InMemoryRefreshTokenRepository } from "../helpers/session-fakes.ts";
 
 const ORIGIN = "https://app.example.com";
@@ -34,6 +36,10 @@ function build() {
     registerUser: new RegisterUser({ users, hasher }),
     authenticateUser: new AuthenticateUser({ users, hasher }),
     issueSession,
+    getUserAccess: new GetUserAccess({
+      roles: new InMemoryRoleRepository(),
+      registry: testRegistry(),
+    }),
     accessTokens,
     users,
     publicRegistration: true,

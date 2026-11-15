@@ -2,7 +2,11 @@ import { Prisma, type PrismaClient } from "../../../../generated/prisma/client.t
 import { AppError } from "../../../../shared/errors/app-error.ts";
 import { DEFAULT_LOCALE, type Locale, SUPPORTED_LOCALES } from "../../../../shared/i18n/locale.ts";
 import { User, type UserStatus } from "../../domain/entities/user.entity.ts";
-import type { UserRepository } from "../../domain/repositories/user.repository.ts";
+import type {
+  UserListQuery,
+  UserPage,
+  UserRepository,
+} from "../../domain/repositories/user.repository.ts";
 
 interface UserRow {
   publicId: string;
@@ -67,6 +71,24 @@ export class PrismaUserRepository implements UserRepository {
     if (!UUID.test(publicId)) return null;
     const row = await this.prisma.user.findUnique({ where: { publicId } });
     return row ? toDomain(row) : null;
+  }
+
+  async list(query: UserListQuery): Promise<UserPage> {
+    const search = query.search?.trim();
+    const contains = { contains: search ?? "", mode: "insensitive" } as const;
+    const where = search
+      ? { OR: [{ email: contains }, { firstName: contains }, { lastName: contains }] }
+      : {};
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        orderBy: { email: "asc" },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items: rows.map(toDomain), total };
   }
 
   async update(user: User): Promise<void> {

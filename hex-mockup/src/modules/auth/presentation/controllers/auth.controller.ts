@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { parseBody } from "../../../../shared/http/validate.ts";
 import { toPublicUser } from "../../../users/application/public-user.ts";
+import type { GetUserAccess } from "../../application/use-cases/get-user-access.use-case.ts";
 import type { AuthenticateUser } from "../../application/use-cases/authenticate-user.use-case.ts";
 import type { IssueSession } from "../../application/use-cases/issue-session.use-case.ts";
 import type { RegisterUser } from "../../application/use-cases/register-user.use-case.ts";
@@ -12,6 +13,7 @@ export interface AuthControllerDeps {
   registerUser: RegisterUser;
   authenticateUser: AuthenticateUser;
   issueSession: IssueSession;
+  getUserAccess: GetUserAccess;
   refreshCookie: RefreshCookieConfig;
 }
 
@@ -35,8 +37,15 @@ export function createAuthController(deps: AuthControllerDeps) {
     });
   };
 
-  const me: RequestHandler = (_req, res) => {
-    res.json({ user: toPublicUser(authenticatedUser(res)) });
+  /** Perfil más lo que el front necesita para mostrar u ocultar secciones: roles y permisos. */
+  const me: RequestHandler = async (_req, res) => {
+    const user = authenticatedUser(res);
+    const access = await deps.getUserAccess.execute(user.publicId);
+    res.json({
+      user: toPublicUser(user),
+      roles: access.roles.map((role) => role.name),
+      permissions: access.permissions,
+    });
   };
 
   return { register, login, me };
