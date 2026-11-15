@@ -31,7 +31,7 @@
         "levels": ["unit", "integration", "acceptance"],
         "runner": "vitest"
       },
-      "modules": ["auth", "users"]
+      "contexts": ["identity"]
     }
   ]
 }
