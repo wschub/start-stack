@@ -1,0 +1,96 @@
+# CI de la maqueta hexagonal. GitHub solo ejecuta workflows desde la raíz del repositorio,
+# por eso este archivo vive aquí y trabaja dentro de hex-mockup/. La versión de plantilla
+# (la que generará el CLI en la raíz de un proyecto) es hex-mockup/.github/workflows/ci.yml.
+name: hex-mockup CI
+
+on:
+  pull_request:
+    paths: ["hex-mockup/**", ".github/workflows/hex-mockup-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["hex-mockup/**", ".github/workflows/hex-mockup-ci.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hex-mockup-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: hex-mockup
+
+env:
+  # Solo para "prisma generate", que no se conecta a la base de datos.
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+jobs:
+  quality:
+    name: Calidad y pruebas rápidas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: hex-mockup/.nvmrc
+          cache: npm
+          cache-dependency-path: hex-mockup/package-lock.json
+      - run: npm ci
+      # src/generated está en .gitignore: el cliente de Prisma se genera en cada job.
+      - run: npm run db:generate
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:acceptance
+
+  integration:
+    name: Integración (Postgres con Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: hex-mockup/.nvmrc
+          cache: npm
+          cache-dependency-path: hex-mockup/package-lock.json
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run test:integration
+
+  build:
+    name: Compilación, auditoría e imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: hex-mockup/.nvmrc
+          cache: npm
+          cache-dependency-path: hex-mockup/package-lock.json
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Construir las imágenes (migraciones y API)
+        run: docker compose --profile app build
+      - name: Humo del contenedor (migraciones, API, registro y login)
+        env:
+          API_PORT: "3100"
+        run: |
+          JWT_ACCESS_SECRET="$(openssl rand -hex 32)"
+          export JWT_ACCESS_SECRET
+          docker compose --profile app up -d
+          api="http://127.0.0.1:${API_PORT}"
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 --retry-all-errors "$api/health/ready"
+          curl --fail --silent --show-error --output /dev/null "$api/auth/register" \
+            --json '{"email":"ci@example.com","password":"una-clave-bastante-larga-1","firstName":"CI","lastName":"Humo"}'
+          curl --fail --silent --show-error --output /dev/null "$api/auth/login" \
+            --json '{"email":"ci@example.com","password":"una-clave-bastante-larga-1"}'
+      - name: Registros de los contenedores (solo si algo falla)
+        if: failure()
+        run: docker compose --profile app logs --no-color
