@@ -2,7 +2,7 @@
 # Compuerta de push: ejecuta el pre-push de todas las maquetas (necesita Docker).
 set -e
 cd "$(git rev-parse --show-toplevel)"
-for mockup in hex-mockup ddd-mockup; do
+for mockup in hex-mockup ddd-mockup clean-mockup; do
   if [ -f "$mockup/.husky/pre-push" ]; then
     echo "pre-push: $mockup"
     (sh -e "$mockup/.husky/pre-push")
