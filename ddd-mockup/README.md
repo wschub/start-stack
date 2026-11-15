@@ -7,8 +7,10 @@ objetos de valor, eventos de dominio y comandos separados de consultas, construi
 servicio, registro e inicio de sesión, sesiones con refresh rotativo, recuperación de contraseña, roles y
 permisos dinámicos, errores traducidos, límites de intentos, Docker y CI.
 
-Los bloques de DDD, las reglas que un test hace cumplir y cómo añadir un contexto están en
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Los bloques de DDD y las reglas que un test hace cumplir están en
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Para crear tu primer contexto con su tabla, sigue
+[docs/ADDING-A-CONTEXT.md](docs/ADDING-A-CONTEXT.md): el recorrido completo con código, de las reglas del
+negocio a la ruta HTTP.
 
 ```text
 src/

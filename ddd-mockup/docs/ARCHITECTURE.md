@@ -318,6 +318,9 @@ push. `npm run verify` lo ejecuta todo junto con lint, formato y tipos.
 
 ## Cómo añadir un contexto a mano
 
+> La guía [ADDING-A-CONTEXT.md](ADDING-A-CONTEXT.md) hace este mismo recorrido con el código completo de
+> un ejemplo (productos), sus pruebas y el principio que protege cada paso. Esto es el resumen.
+
 Ejemplo: un contexto `catalog` con productos. Trabaja de dentro hacia fuera, escribiendo primero la prueba de
 cada paso.
 

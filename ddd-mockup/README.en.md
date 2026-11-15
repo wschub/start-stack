@@ -7,8 +7,10 @@ value objects, domain events and commands kept apart from queries, built with TD
 sign-in, sessions with rotating refresh tokens, password recovery, dynamic roles and permissions,
 translated errors, rate limits, Docker and CI.
 
-The DDD building blocks, the rules enforced by a test and how to add a context are described in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish).
+The DDD building blocks and the rules enforced by a test are described in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Spanish). To create your first context and its table,
+follow [docs/ADDING-A-CONTEXT.md](docs/ADDING-A-CONTEXT.md) (in Spanish): the whole path with code, from the
+business rules to the HTTP route.
 
 ```text
 src/
