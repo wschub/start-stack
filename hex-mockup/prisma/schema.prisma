@@ -31,7 +31,8 @@ model User {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens  RefreshToken[]
+  passwordResets PasswordReset[]
 
   @@map("users")
 }
@@ -51,4 +52,27 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+enum PasswordResetMethod {
+  LINK
+  CODE
+}
+
+model PasswordReset {
+  id         Int                 @id @default(autoincrement())
+  publicId   String              @unique @db.Uuid
+  method     PasswordResetMethod
+  secretHash String
+  userId     Int
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts   Int                 @default(0)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([secretHash])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_resets")
 }

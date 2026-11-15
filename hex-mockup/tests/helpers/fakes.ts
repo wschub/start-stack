@@ -20,6 +20,13 @@ export class InMemoryUserRepository implements UserRepository {
   async findByPublicId(publicId: string): Promise<User | null> {
     return [...this.byEmail.values()].find((user) => user.publicId === publicId) ?? null;
   }
+
+  async update(user: User): Promise<void> {
+    const current = await this.findByPublicId(user.publicId);
+    if (!current) throw new AppError("not_found", { code: "USER_NOT_FOUND" });
+    this.byEmail.delete(current.email);
+    this.byEmail.set(user.email, user);
+  }
 }
 
 export class FakePasswordHasher implements PasswordHasher {

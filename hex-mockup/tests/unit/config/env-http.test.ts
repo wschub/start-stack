@@ -81,3 +81,43 @@ describe("JWT_ISSUER y JWT_AUDIENCE", () => {
     expect([custom.JWT_ISSUER, custom.JWT_AUDIENCE]).toEqual(["mi-api", "mi-front"]);
   });
 });
+
+describe("recuperación de contraseña", () => {
+  const base = {
+    DATABASE_URL: "postgresql://hex:hex@127.0.0.1:55432/hex_mockup",
+    JWT_ACCESS_SECRET: "0123456789abcdef0123456789abcdef-test",
+  };
+  const variablesOf = (source: NodeJS.ProcessEnv): readonly string[] => {
+    try {
+      loadEnv(source);
+    } catch (error) {
+      if (error instanceof EnvError) return error.variables;
+      throw error;
+    }
+    return [];
+  };
+
+  it("acepta una vigencia con unidad y una URL del front", () => {
+    const env = loadEnv({
+      ...base,
+      PASSWORD_RESET_EXPIRATION_TIME: "1h",
+      PASSWORD_RESET_URL: "https://app.example.com/nueva-clave",
+    });
+
+    expect(env.PASSWORD_RESET_EXPIRATION_TIME).toBe(3600);
+    expect(env.PASSWORD_RESET_URL).toBe("https://app.example.com/nueva-clave");
+  });
+
+  it("rechaza una vigencia de más de 24 horas", () => {
+    expect(variablesOf({ ...base, PASSWORD_RESET_EXPIRATION_TIME: "2d" })).toEqual([
+      "PASSWORD_RESET_EXPIRATION_TIME",
+    ]);
+  });
+
+  it.each(["/reset-password", "javascript:alert(1)", "ftp://example.com/reset"])(
+    "rechaza la URL %s",
+    (url) => {
+      expect(variablesOf({ ...base, PASSWORD_RESET_URL: url })).toEqual(["PASSWORD_RESET_URL"]);
+    },
+  );
+});

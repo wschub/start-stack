@@ -19,7 +19,7 @@ function readEnv(): Env {
 }
 
 const env = readEnv();
-const { app, logger, shutdown, purgeExpiredTokens } = composeApp(env);
+const { app, logger, shutdown, purgeExpiredTokens, purgeExpiredPasswordResets } = composeApp(env);
 
 let server: Server;
 try {
@@ -34,9 +34,10 @@ const cleanup = scheduleEvery(
   TOKEN_CLEANUP_INTERVAL_MS,
   async () => {
     const removed = await purgeExpiredTokens.execute();
-    logger.info({ removed }, "expired refresh tokens purged");
+    const removedResets = await purgeExpiredPasswordResets.execute();
+    logger.info({ removed, removedResets }, "expired refresh tokens and password resets purged");
   },
-  (error) => logger.error({ err: error }, "refresh token cleanup failed"),
+  (error) => logger.error({ err: error }, "expired token cleanup failed"),
   { runImmediately: true },
 );
 

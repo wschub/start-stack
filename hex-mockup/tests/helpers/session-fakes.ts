@@ -35,6 +35,14 @@ export class InMemoryRefreshTokenRepository implements RefreshTokenRepository {
     }
   }
 
+  async revokeAllForUser(userPublicId: string, at: Date): Promise<void> {
+    for (const [hash, token] of this.items) {
+      if (token.userPublicId === userPublicId && !token.revokedAt) {
+        this.items.set(hash, { ...token, revokedAt: at });
+      }
+    }
+  }
+
   async deleteExpired(before: Date): Promise<number> {
     let count = 0;
     for (const [hash, token] of this.items) {

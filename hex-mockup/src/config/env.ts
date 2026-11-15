@@ -8,6 +8,7 @@ const postgresUrl = z.string().refine((value) => {
 
 const MAX_ACCESS_TOKEN_SECONDS = 24 * 60 * 60;
 const MAX_REFRESH_TOKEN_SECONDS = 90 * 24 * 60 * 60;
+const MAX_PASSWORD_RESET_SECONDS = 24 * 60 * 60;
 
 /** Duración con unidad (30s, 50m, 1h, 7d) que se entrega ya convertida a segundos. */
 function duration(fallback: string, maxSeconds: number) {
@@ -26,6 +27,11 @@ function isOrigin(value: string): boolean {
   if (!URL.canParse(value)) return false;
   const url = new URL(value);
   return ["http:", "https:"].includes(url.protocol) && url.origin === value;
+}
+
+/** URL http(s) completa de una página del front, por ejemplo la de cambio de contraseña. */
+function isHttpUrl(value: string): boolean {
+  return URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol);
 }
 
 function booleanFlag(fallback: "true" | "false") {
@@ -59,6 +65,11 @@ const schema = z.object({
   JWT_AUDIENCE: z.string().min(1).default("hex-mockup-api"),
   ACCESS_TOKEN_EXPIRATION_TIME: duration("60m", MAX_ACCESS_TOKEN_SECONDS),
   REFRESH_TOKEN_EXPIRATION_TIME: duration("7d", MAX_REFRESH_TOKEN_SECONDS),
+  PASSWORD_RESET_EXPIRATION_TIME: duration("30m", MAX_PASSWORD_RESET_SECONDS),
+  PASSWORD_RESET_URL: z
+    .string()
+    .refine(isHttpUrl, "must be an http(s) URL")
+    .default("http://localhost:5173/reset-password"),
   PUBLIC_REGISTRATION: booleanFlag("true"),
   COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("strict"),
   CORS_ORIGINS: originList,

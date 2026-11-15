@@ -2,6 +2,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { composeApp } from "../../../src/composition.ts";
 import { loadEnv } from "../../../src/config/env.ts";
+import { RecordingPasswordResetNotifier } from "../../helpers/password-reset-fakes.ts";
 import { startTestDatabase, type TestDatabase } from "../../helpers/postgres.ts";
 
 const ORIGIN = "https://app.example.com";
@@ -20,6 +21,7 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
   let db: TestDatabase;
   let app: ReturnType<typeof composeApp>["app"];
   let shutdown: () => Promise<void>;
+  const notifier = new RecordingPasswordResetNotifier();
 
   beforeAll(async () => {
     db = await startTestDatabase();
@@ -30,7 +32,7 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
       CORS_ORIGINS: ORIGIN,
       LOG_LEVEL: "silent",
     });
-    const composed = composeApp(env);
+    const composed = composeApp(env, { passwordResetNotifier: notifier });
     app = composed.app;
     shutdown = composed.shutdown;
   });
@@ -97,6 +99,61 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
     const rows = await db.prisma.refreshToken.findMany();
     expect(rows).toHaveLength(3);
     expect(rows.every((row) => row.revokedAt !== null)).toBe(true);
+  });
+
+  it("recuperación de contraseña con enlace y con código: cambia la clave y cierra las sesiones", async () => {
+    const email = "recupera@example.com";
+    const login = (password: string) => request(app).post("/auth/login").send({ email, password });
+    await request(app)
+      .post("/auth/register")
+      .send({ email, password: PASSWORD, firstName: "Re", lastName: "Cupera" });
+    const session = refreshCookieOf(await login(PASSWORD));
+
+    // Con enlace
+    const forgot = await request(app).post("/auth/password/forgot").send({ email });
+    expect(forgot.status).toBe(202);
+    const token = notifier.last().secret;
+    const stored = await db.prisma.passwordReset.findFirstOrThrow();
+    expect(stored.secretHash).not.toBe(token);
+
+    const linkPassword = "clave-nueva-por-enlace-1";
+    const reset = await request(app)
+      .post("/auth/password/reset")
+      .send({ token, password: linkPassword });
+    expect(reset.status).toBe(204);
+
+    expect((await login(PASSWORD)).status).toBe(401);
+    expect((await login(linkPassword)).status).toBe(200);
+    const refreshed = await request(app)
+      .post("/auth/refresh")
+      .set("Cookie", session)
+      .set("Origin", ORIGIN)
+      .set("X-CSRF-Protection", "1");
+    expect(refreshed.status).toBe(401);
+    const again = await request(app)
+      .post("/auth/password/reset")
+      .send({ token, password: "otra-clave-distinta-1" });
+    expect(again.body.code).toBe("INVALID_RESET_TOKEN");
+
+    // Con código
+    await request(app).post("/auth/password/forgot").send({ email, method: "code" });
+    const code = notifier.last().secret;
+    expect(code).toMatch(/^\d{6}$/);
+    const wrong = code === "000000" ? "000001" : "000000";
+    const codePassword = "clave-nueva-por-codigo-1";
+    const failed = await request(app)
+      .post("/auth/password/reset")
+      .send({ email, code: wrong, password: codePassword });
+    expect(failed.body.code).toBe("INVALID_RESET_CODE");
+
+    const ok = await request(app)
+      .post("/auth/password/reset")
+      .send({ email, code, password: codePassword });
+    expect(ok.status).toBe(204);
+    expect((await login(codePassword)).status).toBe(200);
+
+    const user = await db.prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.passwordHash).toMatch(/^\$argon2id\$/);
   });
 
   it("rechaza al CORS desde un origen que no está en la lista", async () => {

@@ -29,6 +29,8 @@ describe("loadEnv", () => {
       REFRESH_TOKEN_EXPIRATION_TIME: 604_800,
       JWT_ISSUER: "hex-mockup",
       JWT_AUDIENCE: "hex-mockup-api",
+      PASSWORD_RESET_EXPIRATION_TIME: 1800,
+      PASSWORD_RESET_URL: "http://localhost:5173/reset-password",
       PUBLIC_REGISTRATION: true,
       COOKIE_SAME_SITE: "strict",
       CORS_ORIGINS: [],

@@ -60,4 +60,25 @@ describe("PrismaUserRepository (Postgres real)", () => {
       code: "EMAIL_ALREADY_EXISTS",
     });
   });
+
+  it("update guarda los cambios y conserva la fecha de creación", async () => {
+    const user = newUser();
+    await repository.add(user);
+    const later = new Date(user.createdAt.getTime() + 60_000);
+
+    await repository.update(user.changePassword("otro-hash", () => later).deactivate(() => later));
+
+    const found = await repository.findByPublicId(user.publicId);
+    expect(found?.passwordHash).toBe("otro-hash");
+    expect(found?.status).toBe("INACTIVE");
+    expect(found?.updatedAt).toEqual(later);
+    expect(found?.createdAt).toEqual(user.createdAt);
+  });
+
+  it("update falla con USER_NOT_FOUND si el usuario no existe", async () => {
+    await expect(repository.update(newUser())).rejects.toMatchObject({
+      kind: "not_found",
+      code: "USER_NOT_FOUND",
+    });
+  });
 });

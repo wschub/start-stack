@@ -5,4 +5,6 @@ export interface UserRepository {
   add(user: User): Promise<void>;
   findByEmail(email: string): Promise<User | null>;
   findByPublicId(publicId: string): Promise<User | null>;
+  /** Guarda los cambios de un usuario existente. Lanza AppError not_found USER_NOT_FOUND si no existe. */
+  update(user: User): Promise<void>;
 }

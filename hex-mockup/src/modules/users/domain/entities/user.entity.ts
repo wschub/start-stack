@@ -138,6 +138,10 @@ export class User {
     return new User({ ...this.toProps(), status: "ACTIVE", updatedAt: now() });
   }
 
+  changePassword(passwordHash: string, now: () => Date = () => new Date()): User {
+    return new User({ ...this.toProps(), passwordHash, updatedAt: now() });
+  }
+
   toProps(): UserProps {
     return {
       publicId: this.publicId,

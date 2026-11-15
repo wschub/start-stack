@@ -112,6 +112,25 @@ describe("PrismaRefreshTokenRepository (Postgres real)", () => {
     expect((await tokens.findByHash(token.tokenHash))?.revokedAt).toEqual(T1);
   });
 
+  it("revokeAllForUser revoca todas las familias del usuario y ninguna de otros", async () => {
+    const other = User.create({
+      email: "luis@example.com",
+      passwordHash: "hash",
+      firstName: "Luis",
+      lastName: "Pérez",
+    });
+    await users.add(other);
+    await tokens.add(newToken({ tokenHash: "a", familyId: randomUUID() }));
+    await tokens.add(newToken({ tokenHash: "b", familyId: randomUUID() }));
+    await tokens.add(newToken({ tokenHash: "c", userPublicId: other.publicId }));
+
+    await tokens.revokeAllForUser(user.publicId, T1);
+
+    expect((await tokens.findByHash("a"))?.revokedAt).toEqual(T1);
+    expect((await tokens.findByHash("b"))?.revokedAt).toEqual(T1);
+    expect((await tokens.findByHash("c"))?.revokedAt).toBeNull();
+  });
+
   it("al borrar al usuario se borran sus tokens", async () => {
     const token = newToken();
     await tokens.add(token);

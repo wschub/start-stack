@@ -68,4 +68,27 @@ export class PrismaUserRepository implements UserRepository {
     const row = await this.prisma.user.findUnique({ where: { publicId } });
     return row ? toDomain(row) : null;
   }
+
+  async update(user: User): Promise<void> {
+    const props = user.toProps();
+    const data = {
+      email: props.email,
+      passwordHash: props.passwordHash,
+      firstName: props.firstName,
+      lastName: props.lastName,
+      countryDefault: props.countryDefault,
+      mobilePhone: props.mobilePhone,
+      locale: props.locale,
+      status: props.status,
+      updatedAt: props.updatedAt,
+    };
+    try {
+      await this.prisma.user.update({ where: { publicId: props.publicId }, data });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new AppError("not_found", { code: "USER_NOT_FOUND", cause: error });
+      }
+      throw error;
+    }
+  }
 }
