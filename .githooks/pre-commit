@@ -1,0 +1,10 @@
+#!/bin/sh
+# Compuerta de commit: ejecuta el pre-commit de cada maqueta que tenga cambios en el commit.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+for mockup in hex-mockup ddd-mockup; do
+  if [ -f "$mockup/.husky/pre-commit" ] && ! git diff --cached --quiet -- "$mockup"; then
+    echo "pre-commit: $mockup"
+    (sh -e "$mockup/.husky/pre-commit")
+  fi
+done
