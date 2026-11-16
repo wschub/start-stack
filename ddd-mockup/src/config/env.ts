@@ -74,6 +74,7 @@ const schema = z.object({
   COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("strict"),
   CORS_ORIGINS: originList,
   TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+  // start-stack:env-schema
 });
 
 /** Nombres de todas las variables que valida el esquema; .env.example debe documentar las mismas. */

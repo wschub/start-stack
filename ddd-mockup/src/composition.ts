@@ -185,5 +185,6 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     purgeExpiredTokens: new PurgeExpiredRefreshTokens({ tokens: refreshTokens }),
     createSuperAdmin: new CreateSuperAdmin({ users, roles, hasher }),
     purgeExpiredPasswordResets: new PurgeExpiredPasswordResets({ resets: passwordResets }),
+    // start-stack:returns
   };
 }

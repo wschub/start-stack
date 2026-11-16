@@ -19,7 +19,8 @@ function readEnv(): Env {
 }
 
 const env = readEnv();
-const { app, logger, shutdown, purgeExpiredTokens, purgeExpiredPasswordResets } = composeApp(env);
+const composed = composeApp(env);
+const { app, logger, shutdown, purgeExpiredTokens, purgeExpiredPasswordResets } = composed;
 
 let server: Server;
 try {
@@ -41,9 +42,12 @@ const cleanup = scheduleEvery(
   { runImmediately: true },
 );
 
+// start-stack:workers
+
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     cleanup.stop();
+    // start-stack:stop
     server.close(() => {
       void shutdown().finally(() => process.exit(0));
     });
