@@ -31,6 +31,7 @@ export interface WizardEnvironment {
 }
 
 async function askChoice(step: Step, env: WizardEnvironment): Promise<string> {
+  if (step.guide !== undefined) env.ui.note(step.guide.text, step.guide.title);
   for (;;) {
     const value = await env.prompter.select({
       message: step.question,

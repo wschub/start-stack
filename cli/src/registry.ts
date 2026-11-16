@@ -23,7 +23,37 @@ export interface Step {
   question: string;
   choices: readonly Choice[];
   default: string;
+  /** Texto largo que el asistente muestra antes de la pregunta (no con `--yes` ni con la bandera). */
+  guide?: { title: string; text: string };
 }
+
+const ARCHITECTURE_GUIDE = [
+  "Hexagonal (ports and adapters)",
+  "  Business logic in the centre; everything external (database, payments, messaging) plugs in as",
+  "  interchangeable pieces.",
+  "  + Lightweight, easy to test, change provider without touching the business.",
+  "  - More interfaces than a simple layered project.",
+  "  Ideal for: services with many integrations (a payments service with several gateways, webhooks and",
+  "  idempotency; an API fed by REST, queues and cron).",
+  "  Monolith: yes. Microservices: the best fit, because it is lightweight.",
+  "",
+  "Clean Architecture",
+  '  Strict concentric layers; every action of the system is an explicit use case ("create order",',
+  '  "approve credit").',
+  "  + Clear rules on where each thing goes, very maintainable long term, framework independent.",
+  "  - More files and boilerplate; heavy for small projects.",
+  "  Ideal for: medium or large applications that will live for years (transactional dashboard, internal",
+  "  ERP or CRM, back office with many flows).",
+  "  Monolith: the best fit. Microservices: only for the big services; overkill for small ones.",
+  "",
+  "Domain-Driven Design (modular)",
+  "  Code organised by business area, not by technical type, using the business's own vocabulary.",
+  "  + Handles complex rules without turning into chaos, each module evolves on its own, clear boundaries.",
+  "  - Steep learning curve; you need to understand the business before coding.",
+  "  Ideal for: businesses with many rules and distinct areas (a full e-commerce with catalogue, orders,",
+  "  payments and shipping; fintech, insurance, logistics).",
+  "  Monolith: yes, as a modular monolith. Microservices: yes, each bounded context is a natural candidate.",
+].join("\n");
 
 export const STEPS: readonly Step[] = [
   {
@@ -41,6 +71,7 @@ export const STEPS: readonly Step[] = [
     flag: "architecture",
     question: "Architecture",
     default: "hexagonal",
+    guide: { title: "Which architecture fits your project?", text: ARCHITECTURE_GUIDE },
     choices: [
       {
         value: "hexagonal",

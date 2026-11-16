@@ -46,6 +46,19 @@ After generating, the CLI can: initialise git (first commit before installing, s
 the dependencies, start Postgres with Docker, apply the migrations and create the super administrator
 (the password is passed to the project through the environment, never as an argument).
 
+## Choosing an architecture
+
+The wizard shows this guide before the "Architecture" question.
+
+|               | Hexagonal                                                                                                                                | Clean Architecture                                                                                                               | DDD (modular)                                                                                                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Idea          | Business logic in the centre; everything external (database, payments, messaging) plugs in as interchangeable pieces                     | Strict concentric layers; every action of the system is an explicit use case ("create order", "approve credit")                  | Code organised by business area, not by technical type, using the business's own vocabulary                                           |
+| Pros          | Lightweight, easy to test, change provider without touching the business                                                                 | Clear rules on where each thing goes, very maintainable long term, framework independent                                         | Handles complex rules without chaos, each module evolves on its own, clear boundaries                                                 |
+| Cost          | More interfaces than a simple layered project                                                                                            | More files and boilerplate; heavy for small projects                                                                             | Steep learning curve; understand the business before coding                                                                           |
+| Ideal for     | Services with many integrations: a payments service with several gateways, webhooks and idempotency; an API fed by REST, queues and cron | Medium or large applications that will live for years: transactional dashboard, internal ERP or CRM, back office with many flows | Businesses with many rules and distinct areas: full e-commerce (catalogue, orders, payments, shipping), fintech, insurance, logistics |
+| Monolith      | Yes                                                                                                                                      | The best fit                                                                                                                     | Yes, as a modular monolith                                                                                                            |
+| Microservices | The best fit, because it is lightweight                                                                                                  | Only for the big services; overkill for small ones                                                                               | Yes, each bounded context is a natural candidate                                                                                      |
+
 ## Adding a module
 
 From the root of a generated project:
@@ -73,6 +86,9 @@ schema and regenerates the client; without `--migrate` it prints the migration c
 running it. The module name is added to `modules` (`contexts` in DDD) in `.scaffold.json`.
 
 ## Patterns
+
+Patterns are **optional**: a project generated without `--pattern` (or without picking any in the wizard) has none, and
+`.scaffold.json` lists `"patterns": []`. Today the only pattern is `outbox`.
 
 `start-stack create --pattern outbox` (or the "Patterns" step of the wizard) and `start-stack add pattern outbox
 [--migrate] [--dry-run]` apply a pattern: new files, its migration (already written, so no `prisma migrate dev`),

@@ -55,6 +55,27 @@ describe("collectOptions", () => {
     expect(prompter.remaining).toBe(0);
   });
 
+  it("explica las tres arquitecturas antes de preguntar, solo si se pregunta", async () => {
+    const asked = environment(walkthrough("shop-api"));
+    await collectOptions(noFlags, asked.env);
+    const guide = asked.ui.lines.filter((line) => line.startsWith("note:Which architecture"));
+    expect(guide).toHaveLength(1);
+    for (const text of ["Hexagonal", "Clean Architecture", "Domain-Driven Design"]) {
+      expect(guide[0]).toContain(text);
+    }
+
+    const given = environment(walkthrough("shop-api").filter((_, i) => i !== 2));
+    await collectOptions({ choices: { architecture: "ddd" }, yes: false }, given.env);
+    expect(given.ui.lines.some((line) => line.startsWith("note:Which architecture"))).toBe(false);
+
+    const yes = environment([]);
+    await collectOptions(
+      { name: "shop-api", choices: {}, yes: true, docker: false, git: false, install: false },
+      yes.env,
+    );
+    expect(yes.ui.lines.some((line) => line.startsWith("note:Which architecture"))).toBe(false);
+  });
+
   it("muestra las opciones que aún no existen, marcadas, para que se vea el mapa del proyecto", async () => {
     const { env, prompter } = environment(walkthrough("shop-api"));
 
