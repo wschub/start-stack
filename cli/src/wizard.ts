@@ -31,7 +31,6 @@ export interface WizardEnvironment {
 }
 
 async function askChoice(step: Step, env: WizardEnvironment): Promise<string> {
-  if (step.guide !== undefined) env.ui.note(step.guide.text, step.guide.title);
   for (;;) {
     const value = await env.prompter.select({
       message: step.question,
@@ -40,6 +39,7 @@ async function askChoice(step: Step, env: WizardEnvironment): Promise<string> {
         value: choice.value,
         label: choice.supported ? choice.label : `${choice.label} (coming soon)`,
         ...(choice.hint === undefined ? {} : { hint: choice.hint }),
+        ...(choice.description === undefined ? {} : { description: choice.description }),
       })),
     });
     if (isSupported(step, value)) return value;

@@ -5,6 +5,42 @@ export interface SelectOption {
   value: string;
   label: string;
   hint?: string;
+  /** Texto largo bajo el título; en la terminal sustituye a la pista que va al lado. */
+  description?: string;
+}
+
+/** Parte una línea en varias que caben en `width`; todas con sangría de dos espacios. */
+function wrap(line: string, width: number): string[] {
+  const lines: string[] = [];
+  let current = "";
+  for (const word of line.split(" ")) {
+    if (current !== "" && current.length + 1 + word.length > width - 2) {
+      lines.push(`  ${current}`);
+      current = word;
+    } else {
+      current = current === "" ? word : `${current} ${word}`;
+    }
+  }
+  lines.push(`  ${current}`);
+  return lines;
+}
+
+/** Con descripción: título, pista al lado y el texto debajo (clack solo enseña la pista de la opción activa). */
+function selectOption(option: SelectOption): { value: string; label: string; hint?: string } {
+  if (option.description === undefined) {
+    return {
+      value: option.value,
+      label: option.label,
+      ...(option.hint === undefined ? {} : { hint: option.hint }),
+    };
+  }
+  const title = option.hint === undefined ? option.label : `${option.label} (${option.hint})`;
+  const width = Math.max(40, (process.stdout.columns ?? 80) - 14);
+  const body = option.description
+    .split("\n")
+    .flatMap((line) => wrap(line, width))
+    .join("\n");
+  return { value: option.value, label: `${title}\n${body}\n` };
 }
 
 /** Todo lo que el CLI pregunta al usuario. Se sustituye por un doble con respuestas en las pruebas. */
@@ -72,11 +108,7 @@ export const clackPrompter: Prompter = {
     return answer<string>(
       await clack.select({
         message,
-        options: options.map((option) => ({
-          value: option.value,
-          label: option.label,
-          ...(option.hint === undefined ? {} : { hint: option.hint }),
-        })),
+        options: options.map(selectOption),
         initialValue: initial,
       }),
     );

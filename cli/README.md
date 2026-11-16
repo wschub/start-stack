@@ -48,7 +48,8 @@ the dependencies, start Postgres with Docker, apply the migrations and create th
 
 ## Choosing an architecture
 
-The wizard shows this guide before the "Architecture" question.
+The wizard shows each description under its option in the "Architecture" question, next to the short hint (not with
+`--architecture` or `--yes`).
 
 |               | Hexagonal                                                                                                                                | Clean Architecture                                                                                                               | DDD (modular)                                                                                                                         |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
