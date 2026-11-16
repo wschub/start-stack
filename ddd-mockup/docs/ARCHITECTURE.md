@@ -258,6 +258,13 @@ Si algo falla, el código lanza un `AppError` con un tipo (`unauthenticated`, `c
 responde `application/problem+json` con el `detail` traducido según `Accept-Language`. Cualquier error
 desconocido se convierte en un 500 genérico, sin detalles internos.
 
+## Marcadores del CLI
+
+En `src/composition.ts`, en el catálogo de mensajes y en `prisma/schema.prisma` hay comentarios como
+`// start-stack:imports` o `// start-stack:routers`. Son los puntos donde `start-stack add module <nombre>`
+inserta código: siempre justo encima del comentario. No cambian nada en tiempo de ejecución, pero si los
+borras o los mueves el comando se negará a tocar el archivo. `start-stack doctor` avisa si falta alguno.
+
 ## Convenciones
 
 **Nombres de archivo** (kebab-case; el sufijo indica el papel donde la carpeta no basta):

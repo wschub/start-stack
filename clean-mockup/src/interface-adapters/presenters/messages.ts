@@ -44,6 +44,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     CONFLICT: "The request conflicts with the current state of the resource.",
     EMAIL_ALREADY_EXISTS: "An account with this email address already exists.",
     INTERNAL_ERROR: "An unexpected error occurred.",
+    // start-stack:messages-en
   },
   es: {
     VALIDATION_ERROR: "La solicitud no es válida.",
@@ -88,6 +89,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     CONFLICT: "La solicitud entra en conflicto con el estado actual del recurso.",
     EMAIL_ALREADY_EXISTS: "Ya existe una cuenta con ese correo electrónico.",
     INTERNAL_ERROR: "Ocurrió un error inesperado.",
+    // start-stack:messages-es
   },
 };
 

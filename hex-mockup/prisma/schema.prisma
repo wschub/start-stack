@@ -117,3 +117,5 @@ model UserRole {
   @@index([roleId])
   @@map("user_roles")
 }
+
+// start-stack:models

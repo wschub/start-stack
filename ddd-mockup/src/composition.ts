@@ -47,6 +47,7 @@ import { createUsersRouter } from "./contexts/identity/presentation/routes/users
 import { InProcessEventBus } from "./shared/events/event-bus.ts";
 import { PermissionRegistry } from "./shared/permissions/permission.ts";
 import { subscribeIdentityEventHandlers } from "./contexts/identity/application/event-handlers/subscribe.ts";
+// start-stack:imports
 
 /** El código de 6 dígitos caduca antes que el enlace: es más fácil de adivinar. */
 const MAX_RESET_CODE_SECONDS = 10 * 60;
@@ -78,7 +79,11 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
 
   // Catálogo de permisos: cada contexto declara los suyos y aquí se reúnen. Uno nuevo solo
   // tiene que añadir su lista para que aparezca en la gestión de roles.
-  const permissions = new PermissionRegistry([...AUTH_PERMISSIONS, ...USERS_PERMISSIONS]);
+  const permissions = new PermissionRegistry([
+    ...AUTH_PERMISSIONS,
+    ...USERS_PERMISSIONS,
+    // start-stack:permissions
+  ]);
   const roles = new PrismaRoleRepository(prisma);
   const getUserAccess = new GetUserAccess({ roles, registry: permissions });
   const authenticate = requireAuth({ accessTokens, users });
@@ -156,9 +161,18 @@ export function composeApp(env: Env, overrides: CompositionOverrides = {}) {
     changeUserStatus: new ChangeUserStatus({ users, roles }),
   });
 
+  // start-stack:wiring
+
   const app = createApp({
     readinessProbes: [new PrismaReadinessProbe(prisma)],
-    routers: [authRouter, sessionRouter, passwordRouter, rolesRouter, usersRouter],
+    routers: [
+      authRouter,
+      sessionRouter,
+      passwordRouter,
+      rolesRouter,
+      usersRouter,
+      // start-stack:routers
+    ],
     corsOrigins: env.CORS_ORIGINS,
     trustProxy: env.TRUST_PROXY,
     logger,
