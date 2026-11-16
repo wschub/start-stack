@@ -80,17 +80,18 @@ Se ejecuta en la raíz del proyecto generado (donde está `.scaffold.json`).
 start-stack add module <nombre> [opciones]
 ```
 
-| Opción                  | Efecto                                                                                        |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `--entity <nombre>`     | Nombre de la entidad en singular (por defecto, el del módulo)                                 |
-| `--field <nombre:tipo>` | Un campo; se repite. Tipos: `string`, `int`, `boolean`, `datetime`. Por defecto `name:string` |
-| `--migrate`             | Crea también la migración de Prisma (necesita la base de datos arriba)                        |
-| `--dry-run`             | Lista lo que cambiaría y no escribe nada                                                      |
+| Opción                  | Efecto                                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `--entity <nombre>`     | Nombre de la entidad en singular (por defecto, el del módulo)                                                        |
+| `--path <nombre>`       | Ruta HTTP del módulo, sin barra (por defecto, el nombre del módulo). Los permisos siguen usando el nombre del módulo |
+| `--field <nombre:tipo>` | Un campo; se repite. Tipos: `string`, `int`, `boolean`, `datetime`. Por defecto `name:string`                        |
+| `--migrate`             | Crea también la migración de Prisma (necesita la base de datos arriba)                                               |
+| `--dry-run`             | Lista lo que cambiaría y no escribe nada                                                                             |
 
 Ejemplo:
 
 ```bash
-start-stack add module products --entity product \
+start-stack add module catalog --entity product --path products \
   --field name --field priceCents:int --field active:boolean --migrate
 ```
 

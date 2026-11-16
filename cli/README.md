@@ -54,6 +54,7 @@ From the root of a generated project:
 start-stack add module <name> [options]
 
   --entity <name>        singular name of the entity (default: the module name)
+  --path <name>          HTTP path of the module (default: the module name); permissions keep the module name
   --field <name:type>    a field, repeatable; types: string, int, boolean, datetime
                          (default: name:string)
   --migrate              also create the Prisma migration (needs the database up)

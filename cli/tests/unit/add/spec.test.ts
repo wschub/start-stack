@@ -25,6 +25,7 @@ describe("buildSpec", () => {
     expect(buildSpec({ module: "products", fields: [] })).toEqual({
       module: "products",
       entity: "products",
+      path: "products",
       fields: [{ name: "name", type: "string" }],
     });
   });
@@ -35,6 +36,17 @@ describe("buildSpec", () => {
       expect(() => buildSpec({ module, fields: [] })).toThrow();
     },
   );
+
+  it("la ruta puede ser distinta del módulo, pero no una ruta de la base ni inválida", () => {
+    expect(buildSpec({ module: "catalog", path: "products", fields: [] }).path).toBe("products");
+    expect(() => buildSpec({ module: "catalog", path: "users", fields: [] })).toThrow(
+      "base project",
+    );
+    expect(() => buildSpec({ module: "catalog", path: "Products", fields: [] })).toThrow("path");
+    expect(namesOf(buildSpec({ module: "shop", path: "order-items", fields: [] })).pathCamel).toBe(
+      "orderItems",
+    );
+  });
 
   it("rechaza campos repetidos", () => {
     expect(() => buildSpec({ module: "shop", fields: ["a:int", "a:string"] })).toThrow("repeated");

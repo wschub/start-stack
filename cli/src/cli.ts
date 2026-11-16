@@ -51,6 +51,7 @@ Options
 
 Options for add module
   --entity <name>                        singular name of the entity (default: the module name)
+  --path <name>                          HTTP path of the module (default: the module name)
   --field <name:type>                    a field, repeatable; types: string, int, boolean, datetime
                                          (default: name:string)
   --migrate                              also create the Prisma migration (needs the database up)
@@ -80,6 +81,7 @@ function parseFlags(argv: readonly string[]) {
         database: { type: "boolean" },
         pattern: { type: "string", multiple: true },
         entity: { type: "string" },
+        path: { type: "string" },
         field: { type: "string", multiple: true },
         migrate: { type: "boolean" },
         yes: { type: "boolean", short: "y" },
@@ -230,6 +232,7 @@ export async function main(argv: readonly string[], deps: Dependencies): Promise
         {
           name: args[0],
           entity: values.entity,
+          path: values.path,
           fields: values.field ?? [],
           dryRun: values["dry-run"] === true,
           migrate: values.migrate === true,

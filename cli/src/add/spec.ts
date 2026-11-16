@@ -14,6 +14,8 @@ export interface ModuleSpec {
   module: string;
   /** Nombre de la entidad en singular: `order-item`. Por defecto, el del módulo. */
   entity: string;
+  /** Ruta HTTP: `/orders`. Por defecto, el nombre del módulo. */
+  path: string;
   fields: Field[];
 }
 
@@ -95,6 +97,7 @@ export function parseField(raw: string): Field {
 export function buildSpec(input: {
   module: string;
   entity?: string | undefined;
+  path?: string | undefined;
   fields: readonly string[];
 }): ModuleSpec {
   assertKebab(input.module, "module name");
@@ -103,6 +106,11 @@ export function buildSpec(input: {
   }
   const entity = input.entity ?? input.module;
   assertKebab(entity, "entity name");
+  const path = input.path ?? input.module;
+  assertKebab(path, "path");
+  if (RESERVED_MODULES.has(path)) {
+    throw new UserError(`The path "/${path}" is already used by the base project.`);
+  }
 
   const fields = input.fields.length > 0 ? input.fields.map(parseField) : [...DEFAULT_FIELDS];
   const seen = new Set<string>();
@@ -110,7 +118,7 @@ export function buildSpec(input: {
     if (seen.has(field.name)) throw new UserError(`The field "${field.name}" is repeated.`);
     seen.add(field.name);
   }
-  return { module: input.module, entity, fields };
+  return { module: input.module, entity, path, fields };
 }
 
 const words = (kebab: string): string[] => kebab.split("-");
@@ -135,6 +143,10 @@ export interface Names {
   MODULE_UPPER: string;
   /** Nombre de la tabla. */
   moduleSnake: string;
+  /** Ruta HTTP, sin la barra inicial. */
+  path: string;
+  /** Clave de la lista en la respuesta: `orders` → `orders`, `order-items` → `orderItems`. */
+  pathCamel: string;
   entity: string;
   entityCamel: string;
   EntityPascal: string;
@@ -148,6 +160,8 @@ export function namesOf(spec: ModuleSpec): Names {
     ModulePascal: pascal(spec.module),
     MODULE_UPPER: upper(spec.module),
     moduleSnake: snake(spec.module),
+    path: spec.path,
+    pathCamel: camel(spec.path),
     entity: spec.entity,
     entityCamel: camel(spec.entity),
     EntityPascal: pascal(spec.entity),

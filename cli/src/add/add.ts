@@ -23,6 +23,7 @@ export interface AddDeps {
 export interface AddFlags {
   name: string | undefined;
   entity: string | undefined;
+  path: string | undefined;
   fields: readonly string[];
   dryRun: boolean;
   migrate: boolean;
@@ -137,7 +138,12 @@ export async function addModule(flags: AddFlags, deps: AddDeps): Promise<void> {
       placeholder: "products",
     });
   }
-  const spec = buildSpec({ module: name, entity: flags.entity, fields: flags.fields });
+  const spec = buildSpec({
+    module: name,
+    entity: flags.entity,
+    path: flags.path,
+    fields: flags.fields,
+  });
   const rendered = RENDERERS[architecture](spec);
   const plan = planChanges(rendered, (path) => readIfExists(deps.cwd, path));
 

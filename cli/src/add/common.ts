@@ -294,7 +294,7 @@ export function expressControllerFile(
     `  };`,
     ``,
     `  const list: RequestHandler = async (_req, res) => {`,
-    `    res.json({ ${names.moduleCamel}: await deps.list${M}.execute() });`,
+    `    res.json({ ${names.pathCamel}: await deps.list${M}.execute() });`,
     `  };`,
     ``,
     `  return { create, list };`,
@@ -333,8 +333,8 @@ export function routesFile(
     `  const read = [deps.authenticate, deps.authorize(${P}.read)];`,
     `  const manage = [deps.authenticate, deps.authorize(${P}.manage)];`,
     ``,
-    `  router.get("/${names.module}", read, ${handler("list")});`,
-    `  router.post("/${names.module}", manage, ${handler("create")});`,
+    `  router.get("/${names.path}", read, ${handler("list")});`,
+    `  router.post("/${names.path}", manage, ${handler("create")});`,
     ``,
     `  return router;`,
     `}`,
@@ -384,7 +384,7 @@ export function fakeRepositoryFile(
 
 /** Cuerpo común de la prueba de aceptación; cada arquitectura aporta sus imports y su `build()`. */
 export function acceptanceTestBody(spec: ModuleSpec, names: Names): string[] {
-  const path = `/${names.module}`;
+  const path = `/${names.path}`;
   const body = sampleObject(spec);
   const rejectable = rejectableField(spec);
   return [
@@ -410,7 +410,7 @@ export function acceptanceTestBody(spec: ModuleSpec, names: Names): string[] {
     `    expect(created.status).toBe(201);`,
     `    expect(created.body.${names.entityCamel}).toMatchObject(${body});`,
     `    expect(created.body.${names.entityCamel}).not.toHaveProperty("id");`,
-    `    expect(list.body.${names.moduleCamel}).toHaveLength(1);`,
+    `    expect(list.body.${names.pathCamel}).toHaveLength(1);`,
     `  });`,
     ``,
     `  it("rechaza campos desconocidos con 400", async () => {`,

@@ -54,6 +54,8 @@ describe.each(ARCHITECTURES)("add module: %s", (architecture) => {
           "order-items",
           "--entity",
           "order-item",
+          "--path",
+          "orders",
           "--field",
           "name",
           "--field",

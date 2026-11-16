@@ -56,6 +56,29 @@ describe.each(ARCHITECTURES)("add module en %s", (architecture) => {
     expect(ui.has("npx prisma migrate dev --name add_products")).toBe(true);
   });
 
+  it("--path pone otra ruta HTTP, y la lista y las pruebas la usan", async () => {
+    await create(architecture);
+
+    const code = await main(
+      ["add", "module", "catalog", "--entity", "product", "--path", "products"],
+      dependencies({ cwd: project }),
+    );
+
+    expect(code).toBe(0);
+    const files = [
+      "tests/acceptance/catalog.test.ts",
+      architecture === "hexagonal"
+        ? "src/modules/catalog/presentation/routes/catalog.routes.ts"
+        : architecture === "ddd"
+          ? "src/contexts/catalog/presentation/routes/catalog.routes.ts"
+          : "src/frameworks/express/routes/catalog.routes.ts",
+    ].map((path) => readFileSync(join(project, path), "utf8"));
+    expect(files.join("\n")).toContain('"/products"');
+    expect(files.join("\n")).not.toContain('"/catalog"');
+    expect(files[0]).toContain("body.products");
+    expect(files[0]).toContain('"catalog:manage"');
+  });
+
   it("--migrate crea la migración; --dry-run no escribe nada", async () => {
     await create(architecture);
     const dry = new FakeRunner();
