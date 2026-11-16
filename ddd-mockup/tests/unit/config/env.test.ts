@@ -19,7 +19,8 @@ function errorOf(source: NodeJS.ProcessEnv): EnvError {
 
 describe("loadEnv", () => {
   it("aplica valores por defecto", () => {
-    expect(loadEnv(valid)).toEqual({
+    // toMatchObject: un patrón añadido con `start-stack add pattern` suma variables propias.
+    expect(loadEnv(valid)).toMatchObject({
       NODE_ENV: "development",
       PORT: 3000,
       DATABASE_URL: valid.DATABASE_URL,
