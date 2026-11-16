@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
+import { addModule } from "./add/add.ts";
 import { banner } from "./banner.ts";
 import { CancelError, UserError } from "./errors.ts";
 import { generateJwtSecret, renderProject, writeTree } from "./generate.ts";
@@ -27,6 +28,7 @@ export const HELP = `start-stack — scaffold a tested backend from a reference 
 
 Usage
   start-stack create <name> [options]
+  start-stack add module <name> [options]
 
 Options
   --architecture <hexagonal|ddd|clean>   architecture of the project (default: hexagonal)
@@ -41,7 +43,14 @@ Options
   -h, --help                             show this help
   -v, --version                          show the version
 
-Coming later: add, doctor.`;
+Options for add module
+  --entity <name>                        singular name of the entity (default: the module name)
+  --field <name:type>                    a field, repeatable; types: string, int, boolean, datetime
+                                         (default: name:string)
+  --migrate                              also create the Prisma migration (needs the database up)
+  --dry-run                              list what would change and write nothing
+
+Coming later: doctor.`;
 
 function parseFlags(argv: readonly string[]) {
   const choiceFlags = Object.fromEntries(
@@ -58,6 +67,9 @@ function parseFlags(argv: readonly string[]) {
         git: { type: "boolean" },
         install: { type: "boolean" },
         database: { type: "boolean" },
+        entity: { type: "string" },
+        field: { type: "string", multiple: true },
+        migrate: { type: "boolean" },
         yes: { type: "boolean", short: "y" },
         "dry-run": { type: "boolean" },
         help: { type: "boolean", short: "h" },
@@ -176,8 +188,33 @@ export async function main(argv: readonly string[], deps: Dependencies): Promise
       await create(rest, values, deps);
       return 0;
     }
-    if (command === "add" || command === "doctor") {
-      throw new UserError(`"${command}" is not available yet. For now: start-stack create <name>.`);
+    if (command === "add") {
+      const [kind, ...args] = rest;
+      if (kind !== "module") {
+        throw new UserError(
+          `Unknown "add" target "${kind ?? ""}". Usage: start-stack add module <name>.`,
+        );
+      }
+      if (args.length > 1) {
+        throw new UserError(
+          `Unexpected argument "${args[1]}". Usage: start-stack add module <name>.`,
+        );
+      }
+      await addModule(
+        {
+          name: args[0],
+          entity: values.entity,
+          fields: values.field ?? [],
+          dryRun: values["dry-run"] === true,
+          migrate: values.migrate === true,
+          yes: values.yes === true,
+        },
+        { prompter: deps.prompter, ui: deps.ui, runner: deps.runner, cwd: deps.cwd },
+      );
+      return 0;
+    }
+    if (command === "doctor") {
+      throw new UserError(`"doctor" is not available yet.`);
     }
     throw new UserError(`Unknown command "${command ?? ""}".\n\n${HELP}`);
   } catch (error) {

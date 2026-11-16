@@ -46,6 +46,31 @@ After generating, the CLI can: initialise git (first commit before installing, s
 the dependencies, start Postgres with Docker, apply the migrations and create the super administrator
 (the password is passed to the project through the environment, never as an argument).
 
+## Adding a module
+
+From the root of a generated project:
+
+```text
+start-stack add module <name> [options]
+
+  --entity <name>        singular name of the entity (default: the module name)
+  --field <name:type>    a field, repeatable; types: string, int, boolean, datetime
+                         (default: name:string)
+  --migrate              also create the Prisma migration (needs the database up)
+  --dry-run              list what would change and write nothing
+```
+
+It generates a complete, tested slice (entity or aggregate, create and list, permissions
+`<name>:read` and `<name>:manage`, schema, controller, routes, Prisma model and repository, error
+messages, and unit and acceptance tests) in the layout of the project's architecture: a module in
+`hexagonal`, a new bounded context in `ddd`, and one piece per layer in `clean`.
+
+It wires the result in by inserting code above the `// start-stack:<name>` comments in
+`src/composition.ts`, the messages catalogue and `prisma/schema.prisma`. If a marker is missing, or any
+file would be overwritten, it stops before writing anything. It then formats the new code and the Prisma
+schema and regenerates the client; without `--migrate` it prints the migration command instead of
+running it. The module name is added to `modules` (`contexts` in DDD) in `.scaffold.json`.
+
 ## Where the templates come from
 
 Each architecture is a reference project in this repository (`hex-mockup`, `ddd-mockup`, `clean-mockup`)
@@ -68,4 +93,4 @@ in `templates/`.
 
 ## Not yet
 
-`add` (modules, contexts, features) and `doctor` are not implemented. Publishing to npm is pending.
+`add` only supports `module` (create and list; no read-by-id, update or delete, and in DDD no `--context` to extend an existing context). `doctor` is not implemented. Publishing to npm is pending.

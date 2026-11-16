@@ -187,7 +187,9 @@ describe("main", () => {
     [["create", "a", "b", "-y"], 'Unexpected argument "b"'],
     [["create", "-y"], "The project name is required"],
     [["create", "shop-api", "--nope"], "Unknown option '--nope'"],
-    [["add", "module", "products"], '"add" is not available yet'],
+    [["add", "module", "products"], "There is no .scaffold.json here"],
+    [["add", "widget", "products"], 'Unknown "add" target "widget"'],
+    [["add", "module", "a", "b"], 'Unexpected argument "b"'],
     [["doctor"], '"doctor" is not available yet'],
     [["deploy"], 'Unknown command "deploy"'],
   ])("%j termina con error y lo explica", async (argv, message) => {
