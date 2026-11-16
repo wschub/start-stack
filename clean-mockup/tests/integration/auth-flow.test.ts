@@ -182,7 +182,11 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
 
     const rootMe = await request(app).get("/auth/me").set("Authorization", rootAuth);
     expect(rootMe.body.roles).toEqual(["SUPER_ADMIN"]);
-    expect(rootMe.body.permissions).toEqual([
+    // Solo los permisos base: un módulo añadido con `start-stack add module` suma los suyos.
+    const basePermissions = (rootMe.body.permissions as string[]).filter((permission) =>
+      /^(roles|users):/.test(permission),
+    );
+    expect(basePermissions).toEqual([
       "roles:read",
       "roles:manage",
       "roles:assign",
@@ -195,10 +199,10 @@ describe("flujo de autenticación completo (Postgres real, Argon2 real)", () => 
     expect([denied.status, denied.body.code]).toEqual([403, "PERMISSION_DENIED"]);
 
     const catalog = await request(app).get("/permissions").set("Authorization", rootAuth);
-    expect(catalog.body.groups.map((group: { module: string }) => group.module)).toEqual([
-      "auth",
-      "users",
-    ]);
+    const baseGroups = catalog.body.groups
+      .map((group: { module: string }) => group.module)
+      .filter((module: string) => ["auth", "users"].includes(module));
+    expect(baseGroups).toEqual(["auth", "users"]);
 
     const role = await request(app)
       .post("/roles")
