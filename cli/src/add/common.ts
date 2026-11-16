@@ -474,3 +474,94 @@ export function domainTestBody(spec: ModuleSpec, names: Names): string[] {
       : []),
   ];
 }
+
+/**
+ * Prueba de integración del repositorio de Prisma contra Postgres real. Con `eventBus` (DDD) comprueba
+ * también que se publican los eventos al guardar.
+ */
+export function integrationTestFile(
+  spec: ModuleSpec,
+  names: Names,
+  imports: {
+    postgres: string;
+    entity: string;
+    repository: string;
+    /** Ruta a `RecordingEventBus` (solo DDD). */
+    recordingBus?: string;
+    /** Cómo se pasa el reloj a `create`: función (hexagonal, Clean) u opciones (DDD). */
+    clock: "function" | "options";
+  },
+): string {
+  const E = names.EntityPascal;
+  const e = names.entityCamel;
+  const sample = sampleObject(spec);
+  const withEvents = imports.recordingBus !== undefined;
+  const at = (date: string) =>
+    imports.clock === "function" ? `() => ${date}` : `{ now: () => ${date} }`;
+  return lines([
+    `import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";`,
+    `import { ${E} } from "${imports.entity}";`,
+    `import { Prisma${E}Repository } from "${imports.repository}";`,
+    ...(withEvents ? [`import { RecordingEventBus } from "${imports.recordingBus ?? ""}";`] : []),
+    `import { startTestDatabase, type TestDatabase } from "${imports.postgres}";`,
+    ``,
+    `const T0 = new Date("2026-11-15T10:00:00Z");`,
+    `const T1 = new Date("2026-11-15T11:00:00Z");`,
+    ``,
+    `describe("Prisma${E}Repository (Postgres real)", () => {`,
+    `  let db: TestDatabase;`,
+    ...(withEvents ? [`  let bus: RecordingEventBus;`] : []),
+    `  let repository: Prisma${E}Repository;`,
+    ``,
+    `  beforeAll(async () => {`,
+    `    db = await startTestDatabase();`,
+    `  });`,
+    ``,
+    `  afterAll(async () => {`,
+    `    await db?.stop();`,
+    `  });`,
+    ``,
+    `  beforeEach(async () => {`,
+    `    await db.prisma.${e}.deleteMany();`,
+    ...(withEvents
+      ? [
+          `    bus = new RecordingEventBus();`,
+          `    repository = new Prisma${E}Repository(db.prisma, bus);`,
+        ]
+      : [`    repository = new Prisma${E}Repository(db.prisma);`]),
+    `  });`,
+    ``,
+    `  it("guarda y devuelve lo mismo, con todos los tipos de campo", async () => {`,
+    `    const created = ${E}.create(${sample}, ${at("T0")});`,
+    ``,
+    `    await repository.add(created);`,
+    ``,
+    `    expect(await repository.list()).toEqual([created]);`,
+    `  });`,
+    ``,
+    `  it("lista por orden de creación, no de inserción", async () => {`,
+    `    const second = ${E}.create(${sample}, ${at("T1")});`,
+    `    const first = ${E}.create(${sample}, ${at("T0")});`,
+    ``,
+    `    await repository.add(second);`,
+    `    await repository.add(first);`,
+    ``,
+    `    expect((await repository.list()).map((item) => item.publicId)).toEqual([`,
+    `      first.publicId,`,
+    `      second.publicId,`,
+    `    ]);`,
+    `  });`,
+    ...(withEvents
+      ? [
+          ``,
+          `  it("publica ${names.entity}.created solo después de guardar", async () => {`,
+          `    await repository.add(${E}.create(${sample}));`,
+          ``,
+          `    expect(bus.names()).toEqual(["${names.entity}.created"]);`,
+          `  });`,
+        ]
+      : []),
+    `});`,
+    ``,
+  ]);
+}

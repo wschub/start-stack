@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { addModule } from "./add/add.ts";
 import { banner } from "./banner.ts";
+import { runDoctor } from "./doctor.ts";
 import { CancelError, UserError } from "./errors.ts";
 import { generateJwtSecret, renderProject, writeTree } from "./generate.ts";
 import { type PostResult, runPostSteps } from "./post.ts";
@@ -29,6 +30,7 @@ export const HELP = `start-stack — scaffold a tested backend from a reference 
 Usage
   start-stack create <name> [options]
   start-stack add module <name> [options]
+  start-stack doctor
 
 Options
   --architecture <hexagonal|ddd|clean>   architecture of the project (default: hexagonal)
@@ -50,7 +52,8 @@ Options for add module
   --migrate                              also create the Prisma migration (needs the database up)
   --dry-run                              list what would change and write nothing
 
-Coming later: doctor.`;
+Options for doctor
+  (none) checks the project: markers, manifest, wiring and migrations. Writes nothing.`;
 
 function parseFlags(argv: readonly string[]) {
   const choiceFlags = Object.fromEntries(
@@ -214,7 +217,9 @@ export async function main(argv: readonly string[], deps: Dependencies): Promise
       return 0;
     }
     if (command === "doctor") {
-      throw new UserError(`"doctor" is not available yet.`);
+      if (rest.length > 0)
+        throw new UserError(`Unexpected argument "${rest[0]}". Usage: start-stack doctor.`);
+      return runDoctor(deps.cwd, deps.ui);
     }
     throw new UserError(`Unknown command "${command ?? ""}".\n\n${HELP}`);
   } catch (error) {

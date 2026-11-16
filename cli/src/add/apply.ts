@@ -11,6 +11,11 @@ export interface Plan {
 const markerPattern = (marker: string): RegExp =>
   new RegExp(`^[ \\t]*(//|#) start-stack:${marker}[ \\t]*$`, "gm");
 
+/** Cuántas veces aparece el marcador en el contenido. */
+export function countMarker(content: string, marker: string): number {
+  return [...content.matchAll(markerPattern(marker))].length;
+}
+
 /**
  * Inserta `insertion` justo encima de la línea del marcador. Se niega si el marcador falta o está
  * repetido: tocar el archivo a ciegas dejaría el proyecto en un estado que nadie sabe explicar.

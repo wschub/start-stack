@@ -4,6 +4,7 @@ import {
   entityValidation,
   expressControllerFile,
   fakeRepositoryFile,
+  integrationTestFile,
   lines,
   messageLines,
   permissionsFile,
@@ -232,6 +233,16 @@ export function renderDdd(spec: ModuleSpec): Rendered {
   );
 
   // Pruebas
+  files.set(
+    `tests/integration/contexts/${m}/prisma-${entity}.repository.test.ts`,
+    integrationTestFile(spec, names, {
+      postgres: "../../../helpers/postgres.ts",
+      entity: `../../../../src/contexts/${m}/domain/aggregates/${entity}.ts`,
+      repository: `../../../../src/contexts/${m}/infrastructure/database/prisma-${entity}.repository.ts`,
+      recordingBus: "../../../helpers/event-fakes.ts",
+      clock: "options",
+    }),
+  );
   files.set(
     `tests/helpers/${m}-fakes.ts`,
     fakeRepositoryFile(names, {

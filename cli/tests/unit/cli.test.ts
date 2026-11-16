@@ -190,7 +190,8 @@ describe("main", () => {
     [["add", "module", "products"], "There is no .scaffold.json here"],
     [["add", "widget", "products"], 'Unknown "add" target "widget"'],
     [["add", "module", "a", "b"], 'Unexpected argument "b"'],
-    [["doctor"], '"doctor" is not available yet'],
+    [["doctor"], "There is no .scaffold.json here"],
+    [["doctor", "now"], 'Unexpected argument "now"'],
     [["deploy"], 'Unknown command "deploy"'],
   ])("%j termina con error y lo explica", async (argv, message) => {
     const ui = new FakeUi();

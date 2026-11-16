@@ -41,28 +41,43 @@ describe.each(ARCHITECTURES)("add module: %s", (architecture) => {
     expect(created, ui.lines.join("\n")).toBe(0);
     const project = join(workspace, name);
 
-    const added = await main(
-      [
-        "add",
-        "module",
-        "order-items",
-        "--entity",
-        "order-item",
-        "--field",
-        "name",
-        "--field",
-        "priceCents:int",
-        "--field",
-        "active:boolean",
-        "--field",
-        "startsAt:datetime",
-      ],
-      deps(project, ui),
-    );
-    expect(added, ui.lines.join("\n")).toBe(0);
+    // El módulo trae una prueba de integración contra Postgres: necesita su tabla, o sea, la migración.
+    const database = await processRunner.run("docker", ["compose", "up", "-d", "--wait"], {
+      cwd: project,
+    });
+    expect(database.code, database.output).toBe(0);
+    try {
+      const added = await main(
+        [
+          "add",
+          "module",
+          "order-items",
+          "--entity",
+          "order-item",
+          "--field",
+          "name",
+          "--field",
+          "priceCents:int",
+          "--field",
+          "active:boolean",
+          "--field",
+          "startsAt:datetime",
+          "--migrate",
+        ],
+        deps(project, ui),
+      );
+      expect(added, ui.lines.join("\n")).toBe(0);
 
-    const verify = await processRunner.run("npm", ["run", "verify"], { cwd: project });
-    expect(verify.code, verify.output.split("\n").slice(-60).join("\n")).toBe(0);
-    expect(verify.output).toMatch(/Tests\s+\d+ passed/);
+      // Con la migración creada, doctor no tiene nada que decir.
+      const doctorUi = new FakeUi();
+      expect(await main(["doctor"], deps(project, doctorUi)), doctorUi.lines.join("\n")).toBe(0);
+      expect(doctorUi.has("Everything is in place.")).toBe(true);
+
+      const verify = await processRunner.run("npm", ["run", "verify"], { cwd: project });
+      expect(verify.code, verify.output.split("\n").slice(-60).join("\n")).toBe(0);
+      expect(verify.output).toMatch(/Tests\s+\d+ passed/);
+    } finally {
+      await processRunner.run("docker", ["compose", "down", "-v"], { cwd: project });
+    }
   });
 });

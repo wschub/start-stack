@@ -4,6 +4,7 @@ import {
   entityFile,
   expressControllerFile,
   fakeRepositoryFile,
+  integrationTestFile,
   lines,
   messageLines,
   permissionsFile,
@@ -124,6 +125,15 @@ export function renderHexagonal(spec: ModuleSpec): Rendered {
   );
 
   // Pruebas
+  files.set(
+    `tests/integration/${m}/prisma-${entity}.repository.test.ts`,
+    integrationTestFile(spec, names, {
+      postgres: "../../helpers/postgres.ts",
+      entity: `../../../src/modules/${m}/domain/entities/${entity}.entity.ts`,
+      repository: `../../../src/modules/${m}/infrastructure/database/prisma-${entity}.repository.ts`,
+      clock: "function",
+    }),
+  );
   files.set(
     `tests/helpers/${m}-fakes.ts`,
     fakeRepositoryFile(names, {

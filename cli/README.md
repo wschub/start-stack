@@ -71,6 +71,12 @@ file would be overwritten, it stops before writing anything. It then formats the
 schema and regenerates the client; without `--migrate` it prints the migration command instead of
 running it. The module name is added to `modules` (`contexts` in DDD) in `.scaffold.json`.
 
+## Checking a project
+
+`start-stack doctor` writes nothing. It reports (exit code 1 on errors) missing or repeated markers, modules
+listed in `.scaffold.json` without a folder, added modules that are not in the Prisma schema or not wired in
+`src/composition.ts`, and, as warnings, folders missing from the manifest and tables without a migration.
+
 ## Where the templates come from
 
 Each architecture is a reference project in this repository (`hex-mockup`, `ddd-mockup`, `clean-mockup`)
@@ -93,4 +99,4 @@ in `templates/`.
 
 ## Not yet
 
-`add` only supports `module` (create and list; no read-by-id, update or delete, and in DDD no `--context` to extend an existing context). `doctor` is not implemented. Publishing to npm is pending.
+`add` only supports `module` (create and list; no read-by-id, update or delete, and in DDD no `--context` to extend an existing context). Publishing to npm is pending.

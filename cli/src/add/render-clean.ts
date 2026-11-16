@@ -3,6 +3,7 @@ import {
   domainTestBody,
   entityFile,
   fakeRepositoryFile,
+  integrationTestFile,
   lines,
   messageLines,
   permissionsFile,
@@ -148,6 +149,15 @@ export function renderClean(spec: ModuleSpec): Rendered {
   );
 
   // Pruebas
+  files.set(
+    `tests/integration/frameworks/database/prisma-${entity}.repository.test.ts`,
+    integrationTestFile(spec, names, {
+      postgres: "../../../helpers/postgres.ts",
+      entity: `../../../../src/entities/${entity}.ts`,
+      repository: `../../../../src/frameworks/database/prisma-${entity}.repository.ts`,
+      clock: "function",
+    }),
+  );
   files.set(
     `tests/helpers/${m}-fakes.ts`,
     fakeRepositoryFile(names, {
