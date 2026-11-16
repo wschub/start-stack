@@ -14,6 +14,9 @@ npm install
 npm run build && npm link      # deja disponible el comando `start-stack` en tu máquina
 ```
 
+El comando enlazado ejecuta lo que hay compilado en `cli/dist`: **después de cambiar el código o
+actualizar el repositorio, repite `npm run build`**, o seguirá ejecutando la versión anterior.
+
 Sin enlazarlo, se puede ejecutar directo desde cualquier carpeta:
 
 ```bash

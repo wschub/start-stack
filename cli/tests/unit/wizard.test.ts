@@ -101,7 +101,7 @@ describe("collectOptions", () => {
 
     await collectOptions(noFlags, env);
 
-    expect(ui.has("Patterns (queues, outbox, saga…): coming soon")).toBe(true);
+    expect(ui.has("Patterns")).toBe(false);
     expect(ui.has("TDD with Vitest")).toBe(true);
   });
 

@@ -151,7 +151,6 @@ export const ARCHITECTURE_INFO: Record<Architecture, ArchitectureInfo> = {
 export const FIXED_FEATURES: readonly string[] = [
   "Testing: TDD with Vitest — unit, acceptance and integration (always included)",
   "Languages of the generated project: Spanish and English",
-  "Patterns (queues, outbox, saga…): coming soon",
 ];
 
 export function stepById(id: StepId): Step {
