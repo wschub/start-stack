@@ -15,6 +15,7 @@ const options: ProjectOptions = {
   git: true,
   install: true,
   database: true,
+  patterns: [],
 };
 
 const ADMIN = ["admin@example.com", "Ana", "Gómez", "una-clave-bastante-larga"];

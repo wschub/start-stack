@@ -24,6 +24,12 @@ export interface Prompter {
     initial: string;
   }): Promise<string>;
   confirm(question: { message: string; initial: boolean }): Promise<boolean>;
+  /** Varias opciones a la vez; puede devolver una lista vacía. */
+  multiselect(question: {
+    message: string;
+    options: readonly SelectOption[];
+    initial: readonly string[];
+  }): Promise<string[]>;
 }
 
 /** Todo lo que el CLI muestra al usuario. */
@@ -72,6 +78,20 @@ export const clackPrompter: Prompter = {
           ...(option.hint === undefined ? {} : { hint: option.hint }),
         })),
         initialValue: initial,
+      }),
+    );
+  },
+  async multiselect({ message, options, initial }) {
+    return answer<string[]>(
+      await clack.multiselect({
+        message,
+        required: false,
+        options: options.map((option) => ({
+          value: option.value,
+          label: option.label,
+          ...(option.hint === undefined ? {} : { hint: option.hint }),
+        })),
+        initialValues: [...initial],
       }),
     );
   },

@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { countMarker } from "./add/apply.ts";
 import { MARKERS, MODULE_LAYOUT } from "./add/markers.ts";
 import { namesOf, buildSpec } from "./add/spec.ts";
+import { PATTERN_IDS } from "./patterns/pattern.ts";
+import { PATTERNS } from "./patterns/registry.ts";
 import { ARCHITECTURES, type Architecture } from "./registry.ts";
 import type { Ui } from "./ui.ts";
 
@@ -13,6 +15,7 @@ export interface Finding {
 
 interface Manifest {
   apps?: Record<string, unknown>[];
+  [key: string]: unknown;
 }
 
 const read = (cwd: string, path: string): string | undefined => {
@@ -122,6 +125,21 @@ export function diagnose(cwd: string): Finding[] {
       warning(
         `${name}: no migration creates the table "${names.moduleSnake}". Run: npx prisma migrate dev --name add_${names.moduleSnake}`,
       );
+    }
+  }
+  // 4. Cada patrón del manifiesto sigue conectado
+  const patterns = Array.isArray(manifest["patterns"]) ? (manifest["patterns"] as string[]) : [];
+  for (const id of patterns) {
+    const known = PATTERN_IDS.find((candidate) => candidate === id);
+    if (!known) {
+      warning(`.scaffold.json lists the unknown pattern "${id}", so it was not checked.`);
+      continue;
+    }
+    for (const check of PATTERNS[known].checks(architecture)) {
+      const content = read(cwd, check.path);
+      if (content === undefined || !content.includes(check.includes)) {
+        error(`${id}: ${check.message} (${check.path}).`);
+      }
     }
   }
   return findings;

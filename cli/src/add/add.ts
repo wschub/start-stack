@@ -5,7 +5,8 @@ import type { Architecture } from "../registry.ts";
 import { ARCHITECTURES } from "../registry.ts";
 import type { Runner } from "../runner.ts";
 import type { Prompter, Ui } from "../ui.ts";
-import { planChanges } from "./apply.ts";
+import { formatPlan } from "../format.ts";
+import { type Plan, planChanges } from "./apply.ts";
 import type { Rendered } from "./common.ts";
 import { renderClean } from "./render-clean.ts";
 import { renderDdd } from "./render-ddd.ts";
@@ -41,11 +42,13 @@ const MANIFEST_LIST: Record<Architecture, "modules" | "contexts"> = {
   clean: "modules",
 };
 
-interface Manifest {
+export interface Manifest {
   apps?: Record<string, unknown>[];
+  patterns?: unknown;
+  [key: string]: unknown;
 }
 
-function readManifest(cwd: string): { manifest: Manifest; architecture: Architecture } {
+export function readManifest(cwd: string): { manifest: Manifest; architecture: Architecture } {
   const path = join(cwd, ".scaffold.json");
   if (!existsSync(path)) {
     throw new UserError(
@@ -68,12 +71,12 @@ function readManifest(cwd: string): { manifest: Manifest; architecture: Architec
   return { manifest, architecture };
 }
 
-function readIfExists(cwd: string, path: string): string | undefined {
+export function readIfExists(cwd: string, path: string): string | undefined {
   const full = join(cwd, path);
   return existsSync(full) ? readFileSync(full, "utf8") : undefined;
 }
 
-async function runStep(
+export async function runStep(
   deps: AddDeps,
   title: string,
   command: string,
@@ -96,6 +99,32 @@ async function runStep(
   }
 }
 
+/** Da formato al plan con la configuración del proyecto y lo escribe en disco. */
+export async function writePlan(cwd: string, plan: Plan): Promise<Plan> {
+  const formatted = await formatPlan(plan, () => readIfExists(cwd, ".prettierrc.json"));
+  for (const [path, content] of [...formatted.created, ...formatted.updated]) {
+    const full = join(cwd, path);
+    mkdirSync(dirname(full), { recursive: true });
+    writeFileSync(full, content);
+  }
+  return formatted;
+}
+
+/** Texto del manifiesto con `value` añadido a la lista `key` de la app (o del proyecto, si `app` es false). */
+export function manifestWith(
+  manifest: Manifest,
+  where: { app: true; key: string } | { app: false; key: string },
+  value: string,
+): string {
+  const copy = structuredClone(manifest);
+  const target: Record<string, unknown> | undefined = where.app ? copy.apps?.[0] : copy;
+  if (target) {
+    const current = Array.isArray(target[where.key]) ? (target[where.key] as string[]) : [];
+    target[where.key] = [...current, value];
+  }
+  return `${JSON.stringify(copy, null, 2)}\n`;
+}
+
 /** `start-stack add module <nombre>`: crea un módulo (o contexto, o funcionalidad) completo y lo conecta. */
 export async function addModule(flags: AddFlags, deps: AddDeps): Promise<void> {
   const { manifest, architecture } = readManifest(deps.cwd);
@@ -112,7 +141,12 @@ export async function addModule(flags: AddFlags, deps: AddDeps): Promise<void> {
   const rendered = RENDERERS[architecture](spec);
   const plan = planChanges(rendered, (path) => readIfExists(deps.cwd, path));
 
-  const touched = [...plan.created.keys(), ...plan.updated.keys()].sort();
+  const listName = MANIFEST_LIST[architecture];
+  plan.updated.set(
+    ".scaffold.json",
+    manifestWith(manifest, { app: true, key: listName }, spec.module),
+  );
+
   if (flags.dryRun) {
     deps.ui.info(
       `Dry run: ${plan.created.size} files would be created and ${plan.updated.size} updated.`,
@@ -129,28 +163,11 @@ export async function addModule(flags: AddFlags, deps: AddDeps): Promise<void> {
   }
 
   await deps.ui.task(`Adding ${spec.module} (${architecture})`, async () => {
-    for (const [path, content] of [...plan.created, ...plan.updated]) {
-      const full = join(deps.cwd, path);
-      mkdirSync(dirname(full), { recursive: true });
-      writeFileSync(full, content);
-    }
-    const listName = MANIFEST_LIST[architecture];
-    const app = manifest.apps?.[0];
-    if (app) {
-      const current = Array.isArray(app[listName]) ? (app[listName] as string[]) : [];
-      app[listName] = [...current, spec.module];
-      writeFileSync(join(deps.cwd, ".scaffold.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-    }
+    await writePlan(deps.cwd, plan);
   });
 
   const pending: string[] = [];
   const migration = `add_${snake(spec.module)}`;
-  await runStep(deps, "Formatting the new code", "npx", [
-    "prettier",
-    "--write",
-    ".scaffold.json",
-    ...touched,
-  ]);
   if (!(await runStep(deps, "Formatting the Prisma schema", "npx", ["prisma", "format"]))) {
     pending.push("npx prisma format");
   }

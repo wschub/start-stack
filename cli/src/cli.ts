@@ -2,6 +2,8 @@ import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { addModule } from "./add/add.ts";
+import { addPattern } from "./add/add-pattern.ts";
+import { applyPatternsToTree } from "./patterns/tree.ts";
 import { banner } from "./banner.ts";
 import { runDoctor } from "./doctor.ts";
 import { CancelError, UserError } from "./errors.ts";
@@ -30,12 +32,14 @@ export const HELP = `start-stack — scaffold a tested backend from a reference 
 Usage
   start-stack create <name> [options]
   start-stack add module <name> [options]
+  start-stack add pattern <name> [options]
   start-stack doctor
 
 Options
   --architecture <hexagonal|ddd|clean>   architecture of the project (default: hexagonal)
   --type, --language, --auth, --frontend, --package-manager
                                          other choices; only the default is supported for now
+  --pattern <name>                       add a pattern (repeatable): outbox
   --no-docker                            leave out the Dockerfile and the API container
   --no-git                               do not initialise a git repository
   --no-install                           do not install dependencies
@@ -50,6 +54,10 @@ Options for add module
   --field <name:type>                    a field, repeatable; types: string, int, boolean, datetime
                                          (default: name:string)
   --migrate                              also create the Prisma migration (needs the database up)
+  --dry-run                              list what would change and write nothing
+
+Options for add pattern
+  --migrate                              also apply the migration (needs the database up)
   --dry-run                              list what would change and write nothing
 
 Options for doctor
@@ -70,6 +78,7 @@ function parseFlags(argv: readonly string[]) {
         git: { type: "boolean" },
         install: { type: "boolean" },
         database: { type: "boolean" },
+        pattern: { type: "string", multiple: true },
         entity: { type: "string" },
         field: { type: "string", multiple: true },
         migrate: { type: "boolean" },
@@ -130,6 +139,7 @@ async function create(
     git: values.git,
     install: values.install,
     database: values.database,
+    patterns: values.pattern,
     yes,
   };
   const options = await collectOptions(flags, {
@@ -141,6 +151,7 @@ async function create(
   const dir = targetDirectory(deps.cwd, options.name);
   const info = ARCHITECTURE_INFO[options.architecture];
   const template: Tree = (deps.readTemplate ?? readTemplate)(options.architecture);
+  await applyPatternsToTree(template, options.patterns, options.architecture, new Date());
   const tree = renderProject(template, {
     name: options.name,
     architecture: options.architecture,
@@ -193,9 +204,21 @@ export async function main(argv: readonly string[], deps: Dependencies): Promise
     }
     if (command === "add") {
       const [kind, ...args] = rest;
+      if (kind === "pattern") {
+        if (args.length > 1) {
+          throw new UserError(
+            `Unexpected argument "${args[1]}". Usage: start-stack add pattern <name>.`,
+          );
+        }
+        await addPattern(
+          { id: args[0], dryRun: values["dry-run"] === true, migrate: values.migrate === true },
+          { prompter: deps.prompter, ui: deps.ui, runner: deps.runner, cwd: deps.cwd },
+        );
+        return 0;
+      }
       if (kind !== "module") {
         throw new UserError(
-          `Unknown "add" target "${kind ?? ""}". Usage: start-stack add module <name>.`,
+          `Unknown "add" target "${kind ?? ""}". Usage: start-stack add module|pattern <name>.`,
         );
       }
       if (args.length > 1) {

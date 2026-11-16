@@ -161,6 +161,7 @@ describe("main", () => {
       "jwt",
       "none",
       "npm",
+      [],
       false,
       false,
       false,

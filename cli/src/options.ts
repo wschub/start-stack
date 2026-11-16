@@ -1,4 +1,5 @@
 import { UserError } from "./errors.ts";
+import type { PatternId } from "./patterns/pattern.ts";
 import { type Architecture, type Step, STEPS, stepById } from "./registry.ts";
 
 export interface ProjectOptions {
@@ -13,6 +14,7 @@ export interface ProjectOptions {
   git: boolean;
   install: boolean;
   database: boolean;
+  patterns: PatternId[];
 }
 
 const NAME_PATTERN = /^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$/;

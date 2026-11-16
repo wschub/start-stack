@@ -5,7 +5,7 @@ import { FakeUi, ScriptedPrompter } from "./helpers.ts";
 
 const noFlags: Flags = { choices: {}, yes: false };
 
-function environment(answers: (string | boolean)[], docker = true) {
+function environment(answers: (string | boolean | string[])[], docker = true) {
   const prompter = new ScriptedPrompter(answers);
   const ui = new FakeUi();
   return { prompter, ui, env: { prompter, ui, isDockerAvailable: async () => docker } };
@@ -16,7 +16,7 @@ const walkthrough = (
   name: string,
   architecture = "hexagonal",
   rest: boolean[] = [true, true, true, true],
-) => [name, "monolith", architecture, "node", "jwt", "none", "npm", ...rest];
+) => [name, "monolith", architecture, "node", "jwt", "none", "npm", [], ...rest];
 
 describe("collectOptions", () => {
   it("recorre todas las preguntas, en orden, y devuelve las opciones", async () => {
@@ -36,6 +36,7 @@ describe("collectOptions", () => {
       git: true,
       install: true,
       database: true,
+      patterns: [],
     });
     expect(prompter.asked).toEqual([
       "Project name",
@@ -45,6 +46,7 @@ describe("collectOptions", () => {
       "Authentication",
       "Frontend",
       "Package manager",
+      "Patterns (space to select, enter to continue)",
       "Include a Dockerfile and a container for the API?",
       "Initialise a git repository?",
       "Install dependencies now?",
@@ -80,6 +82,7 @@ describe("collectOptions", () => {
       "jwt",
       "none",
       "npm",
+      [],
       true,
       true,
       true,
@@ -109,6 +112,7 @@ describe("collectOptions", () => {
       "jwt",
       "none",
       "npm",
+      [],
       true,
       true,
       true,
@@ -204,5 +208,55 @@ describe("collectOptions", () => {
     await expect(
       collectOptions(noFlags, { prompter, ui: new FakeUi(), isDockerAvailable: async () => true }),
     ).rejects.toBeInstanceOf(CancelError);
+  });
+  it("ofrece los patrones con su explicación y devuelve los elegidos", async () => {
+    const { env, prompter, ui } = environment([
+      "shop-api",
+      "monolith",
+      "hexagonal",
+      "node",
+      "jwt",
+      "none",
+      "npm",
+      ["outbox"],
+      true,
+      true,
+      true,
+      true,
+    ]);
+
+    const options = await collectOptions(noFlags, env);
+
+    expect(options.patterns).toEqual(["outbox"]);
+    const offered = prompter.selectOptions["Patterns (space to select, enter to continue)"];
+    expect(offered?.map((option) => option.value)).toEqual(["outbox"]);
+    expect(offered?.[0]?.hint).toMatch(/transacción/);
+    expect(ui.has("Coming soon: Cloud Tasks, Kafka, Saga")).toBe(true);
+  });
+
+  it("--pattern se valida y evita la pregunta; con --yes no hay patrones", async () => {
+    const given = await collectOptions(
+      { name: "shop", choices: {}, yes: true, patterns: ["outbox"] },
+      environment([]).env,
+    );
+    const none = await collectOptions(
+      { name: "shop", choices: {}, yes: true },
+      environment([]).env,
+    );
+
+    expect(given.patterns).toEqual(["outbox"]);
+    expect(none.patterns).toEqual([]);
+    await expect(
+      collectOptions(
+        { name: "shop", choices: {}, yes: true, patterns: ["saga"] },
+        environment([]).env,
+      ),
+    ).rejects.toThrow('Unknown pattern "saga"');
+    await expect(
+      collectOptions(
+        { name: "shop", choices: {}, yes: true, patterns: ["outbox", "outbox"] },
+        environment([]).env,
+      ),
+    ).rejects.toThrow("more than once");
   });
 });

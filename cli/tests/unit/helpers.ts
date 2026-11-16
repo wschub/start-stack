@@ -68,13 +68,13 @@ export class FakeUi implements Ui {
 export class ScriptedPrompter implements Prompter {
   readonly asked: string[] = [];
   readonly selectOptions: Record<string, readonly SelectOption[]> = {};
-  private readonly answers: (string | boolean)[];
+  private readonly answers: (string | boolean | string[])[];
 
-  constructor(answers: (string | boolean)[]) {
+  constructor(answers: (string | boolean | string[])[]) {
     this.answers = [...answers];
   }
 
-  private next(message: string): string | boolean {
+  private next(message: string): string | boolean | string[] {
     this.asked.push(message);
     const answer = this.answers.shift();
     if (answer === undefined) throw new Error(`Unexpected question: "${message}"`);
@@ -97,6 +97,11 @@ export class ScriptedPrompter implements Prompter {
   }
   async confirm(question: { message: string }) {
     return Boolean(this.next(question.message));
+  }
+  async multiselect(question: { message: string; options: readonly SelectOption[] }) {
+    this.selectOptions[question.message] = question.options;
+    const answer = this.next(question.message);
+    return Array.isArray(answer) ? answer.map(String) : [];
   }
 
   get remaining(): number {

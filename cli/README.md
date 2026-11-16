@@ -71,11 +71,22 @@ file would be overwritten, it stops before writing anything. It then formats the
 schema and regenerates the client; without `--migrate` it prints the migration command instead of
 running it. The module name is added to `modules` (`contexts` in DDD) in `.scaffold.json`.
 
+## Patterns
+
+`start-stack create --pattern outbox` (or the "Patterns" step of the wizard) and `start-stack add pattern outbox
+[--migrate] [--dry-run]` apply a pattern: new files, its migration (already written, so no `prisma migrate dev`),
+and insertions above the `// start-stack:*` markers, including `src/main.ts`, `src/config/env.ts` and
+`.env.example`. The same code serves both paths. `outbox` stores messages in the same transaction as the change
+and a worker delivers them later (at-least-once, with backoff; exhausted messages stay in the table). It is a
+`messaging` module in hexagonal, `platform/messaging` in DDD and `use-cases/messaging` plus `frameworks/` in
+Clean. See `INSTRUCCIONES.md` for how to enqueue and subscribe.
+
 ## Checking a project
 
 `start-stack doctor` writes nothing. It reports (exit code 1 on errors) missing or repeated markers, modules
 listed in `.scaffold.json` without a folder, added modules that are not in the Prisma schema or not wired in
-`src/composition.ts`, and, as warnings, folders missing from the manifest and tables without a migration.
+`src/composition.ts`, and, as warnings, folders missing from the manifest and tables without a migration. It also checks that every
+pattern listed in the manifest is still wired.
 
 ## Where the templates come from
 

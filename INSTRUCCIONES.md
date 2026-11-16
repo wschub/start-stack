@@ -29,7 +29,7 @@ start-stack create <nombre> [opciones]
 ```
 
 Sin opciones abre el asistente y pregunta todo (tipo, arquitectura, lenguaje, autenticación, frontend,
-gestor de paquetes, Docker, git, instalación y base de datos). Las opciones que aún no existen aparecen
+gestor de paquetes, patrones, Docker, git, instalación y base de datos). Las opciones que aún no existen aparecen
 como "coming soon" y no se pueden elegir.
 
 | Opción                                   | Efecto                                                       |
@@ -115,7 +115,74 @@ Después del comando:
 2. Asigna los permisos nuevos a un rol (el superadministrador los recibe solo).
 3. `npm run verify`.
 
-## 5. Comprobar el proyecto
+## 5. Patrones
+
+Un patrón es una pieza de arquitectura que se añade de una vez a un proyecto: archivos nuevos, su
+migración y las conexiones necesarias. Se elige al crear el proyecto (paso "Patterns" del asistente o
+`--pattern`) o después, con:
+
+```bash
+start-stack add pattern <nombre> [--migrate] [--dry-run]
+```
+
+`--migrate` aplica la migración (`npm run db:migrate`, necesita la base de datos arriba); sin él, el
+comando te imprime ese paso. La migración del patrón ya viene escrita: no hace falta `prisma migrate dev`.
+
+### Outbox
+
+**Qué resuelve.** Guardar un cambio y avisar de él son dos escrituras: si el proceso cae entre las dos, el
+aviso se pierde. Con outbox el aviso se guarda **en la misma transacción** que el cambio, en la tabla
+`outbox_messages`, y un worker lo entrega después. Es la base para colas, notificaciones y reacciones
+fiables (por ejemplo, "pago confirmado → actualizar stock y avisar al cliente").
+
+**Qué garantiza.** Entrega _al menos una vez_: un mensaje puede llegar repetido, así que quien lo consuma
+debe ignorar los que ya procesó (cada mensaje lleva un `id` estable). Si la entrega falla se reintenta con
+espera creciente; tras `OUTBOX_MAX_ATTEMPTS` intentos queda marcado en la tabla (`failedAt`, `lastError`),
+no se borra. Varias instancias de la API pueden correr el worker a la vez sin entregar lo mismo dos veces.
+
+**Dónde aplica más.**
+
+| Arquitectura | Dónde queda                                    | Cómo se usa                                                                                                 |
+| ------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| hexagonal    | `src/modules/messaging/`                       | El caso de uso llama `outbox.enqueue(...)` dentro de `unitOfWork.run(...)`                                  |
+| clean        | `src/use-cases/messaging/` y `src/frameworks/` | Igual que en hexagonal                                                                                      |
+| ddd          | `src/platform/messaging/`                      | Los eventos de dominio de un agregado se escriben en el outbox al guardarlo, dentro de la misma transacción |
+
+**Qué se genera.** El puerto `Outbox` (guardar un mensaje), `UnitOfWork` (una transacción con sus
+repositorios), `MessageBroker` (por dónde sale el mensaje) y el caso de uso `DispatchOutbox`, con sus
+adaptadores de Prisma y un broker en proceso. El worker arranca en `src/main.ts` y se configura con:
+
+| Variable                  | Por defecto | Para qué                                                     |
+| ------------------------- | ----------- | ------------------------------------------------------------ |
+| `OUTBOX_WORKER`           | `true`      | Desactívalo en las instancias que no deban entregar mensajes |
+| `OUTBOX_POLL_INTERVAL_MS` | `2000`      | Cada cuánto busca mensajes pendientes                        |
+| `OUTBOX_BATCH_SIZE`       | `50`        | Cuántos toma por vuelta                                      |
+| `OUTBOX_MAX_ATTEMPTS`     | `10`        | Intentos antes de darlo por agotado                          |
+
+**Cómo se usa** (en `src/composition.ts`, donde el patrón dejó `unitOfWork` y `messageBroker`):
+
+```ts
+// Encolar, junto con el cambio (hexagonal y clean)
+await unitOfWork.run(async ({ outbox, orders }) => {
+  await orders.add(order);
+  await outbox.enqueue({ topic: "order.paid", payload: { orderId: order.publicId } });
+});
+
+// Reaccionar (los manejadores deben tolerar repetidos: usa message.id)
+messageBroker.subscribe("order.paid", async (message) => {
+  /* ... */
+});
+```
+
+Para que `orders` exista dentro de la transacción, devuélvelo en el segundo argumento de
+`new PrismaUnitOfWork(prisma, ({ tx }) => ({ orders: new PrismaOrderRepository(tx) }))`. En DDD ese
+argumento ya trae `events` (un `OutboxEventBus`): pásaselo al repositorio y sus eventos irán al outbox.
+
+El payload debe ser JSON: las fechas llegan a los consumidores como texto. El broker incluido entrega
+dentro del mismo proceso; para una cola externa (Cloud Tasks, Kafka, SQS) bastará con otra implementación
+de `MessageBroker`, sin tocar el resto.
+
+## 6. Comprobar el proyecto
 
 ```bash
 start-stack doctor
@@ -125,15 +192,15 @@ No escribe nada. Se ejecuta en la raíz del proyecto y comprueba que `add module
 
 - **Errores** (código de salida 1): falta o está repetido algún marcador `// start-stack:*`; el manifiesto
   lista un módulo sin carpeta; un módulo añadido no tiene su modelo en `prisma/schema.prisma` o no está
-  registrado y montado en `src/composition.ts`.
+  registrado y montado en `src/composition.ts`; a un patrón del manifiesto le falta alguna pieza.
 - **Avisos**: una carpeta de módulo que no está en el manifiesto; un módulo sin migración que cree su tabla.
 
-## 6. Todavía no existen
+## 7. Todavía no existen
 
 `add` para otras piezas que no sean `module` (lectura por id, actualización, borrado, extender un
-contexto DDD existente), patrones, otros lenguajes y bases de datos, frontend y la publicación en npm.
+contexto DDD existente), más patrones (Cloud Tasks, Kafka, saga), otros lenguajes y bases de datos, frontend y la publicación en npm.
 
-## 7. Para quien desarrolla el CLI
+## 8. Para quien desarrolla el CLI
 
 ```bash
 cd cli

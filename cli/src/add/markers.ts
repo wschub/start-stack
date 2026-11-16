@@ -26,12 +26,17 @@ export const MODULE_LAYOUT: Record<
   Architecture,
   { dir: string; base: readonly string[]; ignore: readonly string[]; list: "modules" | "contexts" }
 > = {
-  hexagonal: { dir: "src/modules", base: ["auth", "users"], ignore: ["health"], list: "modules" },
+  hexagonal: {
+    dir: "src/modules",
+    base: ["auth", "users"],
+    ignore: ["health", "messaging"],
+    list: "modules",
+  },
   ddd: { dir: "src/contexts", base: ["identity"], ignore: [], list: "contexts" },
   clean: {
     dir: "src/use-cases",
     base: ["auth", "users"],
-    ignore: ["health", "permissions", "ports"],
+    ignore: ["health", "permissions", "ports", "messaging"],
     list: "modules",
   },
 };

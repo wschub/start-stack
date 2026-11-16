@@ -38,6 +38,8 @@ const RESERVED_MODULES = new Set([
   "cli",
   "app",
   "events",
+  "messaging",
+  "outbox",
 ]);
 
 /** Nombres que la entidad generada ya usa para otra cosa. */

@@ -5,6 +5,7 @@ import {
   validateChoice,
   validateProjectName,
 } from "./options.ts";
+import { COMING_PATTERNS, PATTERNS, validatePatternSet } from "./patterns/registry.ts";
 import { type Architecture, FIXED_FEATURES, STEPS, type Step, stepById } from "./registry.ts";
 import type { Prompter, Ui } from "./ui.ts";
 
@@ -16,6 +17,8 @@ export interface Flags {
   git?: boolean | undefined;
   install?: boolean | undefined;
   database?: boolean | undefined;
+  /** Patrones pedidos con `--pattern`. `undefined` = no se indicó ninguno. */
+  patterns?: readonly string[] | undefined;
   /** Sin preguntas: lo que no se indicó toma su valor por defecto. */
   yes: boolean;
 }
@@ -64,6 +67,25 @@ async function decideBoolean(
   return flags.yes ? question.initial : env.prompter.confirm(question);
 }
 
+async function decidePatterns(
+  flags: Flags,
+  env: WizardEnvironment,
+): Promise<ProjectOptions["patterns"]> {
+  if (flags.patterns !== undefined) return validatePatternSet(flags.patterns);
+  if (flags.yes) return [];
+  const chosen = await env.prompter.multiselect({
+    message: "Patterns (space to select, enter to continue)",
+    initial: [],
+    options: Object.values(PATTERNS).map((pattern) => ({
+      value: pattern.id,
+      label: pattern.label,
+      hint: pattern.summary,
+    })),
+  });
+  env.ui.info(`Coming soon: ${COMING_PATTERNS.map((pattern) => pattern.label).join(", ")}.`);
+  return validatePatternSet(chosen);
+}
+
 /**
  * Reúne todas las opciones del proyecto: lo que vino en la terminal se respeta y se valida; lo demás
  * se pregunta, o toma su valor por defecto con `--yes`.
@@ -89,6 +111,7 @@ export async function collectOptions(
   for (const step of STEPS) {
     chosen[step.id] = await decideChoice(stepById(step.id), flags, env);
   }
+  const patterns = await decidePatterns(flags, env);
   if (!flags.yes) for (const feature of FIXED_FEATURES) env.ui.info(feature);
 
   const docker = await decideBoolean(flags.docker, flags, env, {
@@ -129,6 +152,7 @@ export async function collectOptions(
     git,
     install,
     database,
+    patterns,
   };
 }
 
