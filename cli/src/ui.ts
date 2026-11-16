@@ -1,4 +1,6 @@
+import { SelectPrompt } from "@clack/core";
 import * as clack from "@clack/prompts";
+import { styleText } from "node:util";
 import { CancelError } from "./errors.ts";
 
 export interface SelectOption {
@@ -25,22 +27,46 @@ function wrap(line: string, width: number): string[] {
   return lines;
 }
 
-/** Con descripción: título, pista al lado y el texto debajo (clack solo enseña la pista de la opción activa). */
-function selectOption(option: SelectOption): { value: string; label: string; hint?: string } {
-  if (option.description === undefined) {
-    return {
-      value: option.value,
-      label: option.label,
-      ...(option.hint === undefined ? {} : { hint: option.hint }),
-    };
-  }
-  const title = option.hint === undefined ? option.label : `${option.label} (${option.hint})`;
+/**
+ * Pregunta con una descripción bajo cada opción. `clack.select` repetiría la descripción entera al
+ * confirmar (usa la misma etiqueta), así que aquí se pinta con `SelectPrompt`: al confirmar solo queda el título.
+ */
+async function selectWithDescriptions(
+  message: string,
+  options: readonly SelectOption[],
+  initial: string | undefined,
+): Promise<string | symbol> {
   const width = Math.max(40, (process.stdout.columns ?? 80) - 14);
-  const body = option.description
-    .split("\n")
-    .flatMap((line) => wrap(line, width))
-    .join("\n");
-  return { value: option.value, label: `${title}\n${body}\n` };
+  const title = (option: SelectOption) =>
+    option.hint === undefined ? option.label : `${option.label} (${option.hint})`;
+  const prompt = new SelectPrompt<SelectOption>({
+    options: [...options],
+    ...(initial === undefined ? {} : { initialValue: initial }),
+    render() {
+      const bar = styleText("gray", "│");
+      const marks: Record<string, string> = { submit: "◇", cancel: "■" };
+      const head = `${bar}\n${styleText("cyan", marks[this.state] ?? "◆")}  ${message}\n`;
+      const chosen = options[this.cursor];
+      if (this.state === "submit")
+        return `${head}${bar}  ${styleText("dim", chosen?.label ?? "")}\n`;
+      if (this.state === "cancel") {
+        return `${head}${bar}  ${styleText(["strikethrough", "dim"], chosen?.label ?? "")}\n${bar}\n`;
+      }
+      const lines = options.flatMap((option, index) => {
+        const active = index === this.cursor;
+        const mark = active ? styleText("green", "●") : styleText("dim", "○");
+        const body = (option.description ?? "")
+          .split("\n")
+          .filter((line) => line !== "")
+          .flatMap((line) => wrap(line, width));
+        const text = [`${mark} ${title(option)}`, ...body.map((line) => styleText("dim", line))];
+        return [...text.map((line) => `${bar}  ${line}`), bar];
+      });
+      const help = `${styleText("dim", "↑/↓")} to navigate • ${styleText("dim", "Enter:")} confirm`;
+      return `${head}${lines.join("\n")}\n${bar}  ${help}\n${styleText("gray", "└")}\n`;
+    },
+  });
+  return prompt.prompt() as Promise<string | symbol>;
 }
 
 /** Todo lo que el CLI pregunta al usuario. Se sustituye por un doble con respuestas en las pruebas. */
@@ -105,10 +131,17 @@ export const clackPrompter: Prompter = {
     );
   },
   async select({ message, options, initial }) {
+    if (options.some((option) => option.description !== undefined)) {
+      return answer<string>(await selectWithDescriptions(message, options, initial));
+    }
     return answer<string>(
       await clack.select({
         message,
-        options: options.map(selectOption),
+        options: options.map((option) => ({
+          value: option.value,
+          label: option.label,
+          ...(option.hint === undefined ? {} : { hint: option.hint }),
+        })),
         initialValue: initial,
       }),
     );
