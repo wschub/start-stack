@@ -4,6 +4,7 @@
 name: clean-mockup CI
 
 on:
+  workflow_dispatch:
   pull_request:
     paths: ["clean-mockup/**", ".github/workflows/clean-mockup-ci.yml"]
   push:

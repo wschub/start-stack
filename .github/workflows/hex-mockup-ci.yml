@@ -4,6 +4,7 @@
 name: hex-mockup CI
 
 on:
+  workflow_dispatch:
   pull_request:
     paths: ["hex-mockup/**", ".github/workflows/hex-mockup-ci.yml"]
   push:
