@@ -1,1 +1,11 @@
 .DS_Store
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.qodo
+
+# Working notes, never versioned
+HANDOFF-*.md
